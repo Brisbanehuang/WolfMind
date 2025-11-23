@@ -5,6 +5,7 @@ from typing import Any
 from agentscope.message._message_base import Msg
 import numpy as np
 
+from config import config
 from utils import (
     majority_vote,
     names_to_str,
@@ -12,20 +13,20 @@ from utils import (
     MAX_GAME_ROUND,
     MAX_DISCUSSION_ROUND,
     Players,
+    Prompts,
 )
 from structured_model import (
     DiscussionModel,
     get_vote_model,
-    get_poison_model,
-    WitchResurrectModel,
-    get_seer_model,
-    get_hunter_model,
 )
-# from prompt import EnglishPrompts as Prompts
-
-# Uncomment the following line to use Chinese prompts
-from prompt import ChinesePrompts as Prompts
-
+from roles import (
+    RoleFactory,
+    Werewolf,
+    Villager,
+    Seer,
+    Witch,
+    Hunter,
+)
 
 from agentscope.agent import ReActAgent
 from agentscope.pipeline import (
@@ -36,22 +37,6 @@ from agentscope.pipeline import (
 
 
 moderator = EchoAgent()
-
-
-async def hunter_stage(
-    hunter_agent: ReActAgent,
-    players: Players,
-) -> str | None:
-    """Because the hunter's stage may happen in two places: killed at night
-    or voted during the day, we define a function here to avoid duplication."""
-    global moderator
-    msg_hunter = await hunter_agent(
-        await moderator(Prompts.to_hunter.format(name=hunter_agent.name)),
-        structured_model=get_hunter_model(players.current_alive),
-    )
-    if msg_hunter.metadata.get("shoot"):
-        return msg_hunter.metadata.get("name", None)
-    return None
 
 
 async def werewolves_game(agents: list[ReActAgent]) -> None:
@@ -85,14 +70,17 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
     np.random.shuffle(agents)
     np.random.shuffle(roles)
 
-    for agent, role in zip(agents, roles):
+    for agent, role_name in zip(agents, roles):
+        # 创建角色对象
+        role_obj = RoleFactory.create_role(agent, role_name)
+        
         # Tell the agent its role
         await agent.observe(
             await moderator(
-                f"[{agent.name} ONLY] {agent.name}, your role is {role}.",
+                f"[{agent.name} ONLY] {agent.name}, your role is {role_name}.",
             ),
         )
-        players.add_player(agent, role)
+        players.add_player(agent, role_name, role_obj)
 
     # Printing the roles
     players.print_roles()
@@ -100,8 +88,9 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
     # GAME BEGIN!
     for _ in range(MAX_GAME_ROUND):
         # Create a MsgHub for all players to broadcast messages
+        alive_agents = [role.agent for role in players.current_alive]
         async with MsgHub(
-            participants=players.current_alive,
+            participants=alive_agents,
             enable_auto_broadcast=False,  # manual broadcast only
             name="alive_players",
         ) as alive_players_hub:
@@ -112,12 +101,13 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
             killed_player, poisoned_player, shot_player = None, None, None
 
             # Werewolves discuss
+            werewolf_agents = [w.agent for w in players.werewolves]
             async with MsgHub(
-                players.werewolves,
+                werewolf_agents,
                 enable_auto_broadcast=True,
                 announcement=await moderator(
                     Prompts.to_wolves_discussion.format(
-                        names_to_str(players.werewolves),
+                        names_to_str(werewolf_agents),
                         names_to_str(players.current_alive),
                     ),
                 ),
@@ -126,8 +116,9 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 # Discussion
                 n_werewolves = len(players.werewolves)
                 for _ in range(1, MAX_DISCUSSION_ROUND * n_werewolves + 1):
-                    res = await players.werewolves[_ % n_werewolves](
-                       structured_model=DiscussionModel,
+                    werewolf = players.werewolves[_ % n_werewolves]
+                    res = await werewolf.discuss_with_team(
+                        await moderator(""),
                     ) 
                     if _ % n_werewolves == 0 and res.metadata.get(
                         "reach_agreement",
@@ -137,12 +128,12 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 # Werewolves vote
                 # Disable auto broadcast to avoid following other's votes
                 werewolves_hub.set_auto_broadcast(False)
-                msgs_vote = await fanout_pipeline(
-                    players.werewolves,
-                    msg=await moderator(content=Prompts.to_wolves_vote),
-                    structured_model=get_vote_model(players.current_alive),
-                    enable_gather=False,
-                )
+                vote_prompt = await moderator(content=Prompts.to_wolves_vote)
+                msgs_vote = []
+                for werewolf in players.werewolves:
+                    msg = await werewolf.team_vote(vote_prompt, players.current_alive)
+                    msgs_vote.append(msg)
+                
                 killed_player, votes = majority_vote(
                     [_.metadata.get("vote") for _ in msgs_vote],
                 )
@@ -160,76 +151,44 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
             await alive_players_hub.broadcast(
                 await moderator(Prompts.to_all_witch_turn),
             )
-            msg_witch_poison = None
-            for agent in players.witch:
-                # Cannot heal witch herself
-                msg_witch_resurrect = None
-                if healing and killed_player != agent.name:
-                    msg_witch_resurrect = await agent(
-                        await moderator(
-                            Prompts.to_witch_resurrect.format(
-                                witch_name=agent.name,
-                                dead_name=killed_player,
-                            ),
-                        ),
-                        structured_model=WitchResurrectModel,
-                    )
-                    if msg_witch_resurrect.metadata.get("resurrect"):
-                        killed_player = None
-                        healing = False
-
-                # Has poison potion and hasn't used the healing potion
-                if poison and not (
-                    msg_witch_resurrect
-                    and msg_witch_resurrect.metadata["resurrect"]
-                ):
-                    msg_witch_poison = await agent(
-                        await moderator(
-                            Prompts.to_witch_poison.format(
-                                witch_name=agent.name,
-                            ),
-                        ),
-                        structured_model=get_poison_model(
-                            players.current_alive,
-                        ),
-                    )
-                    if msg_witch_poison.metadata.get("poison"):
-                        poisoned_player = msg_witch_poison.metadata.get("name")
-                        poison = False
+            for witch in players.witch:
+                game_state = {
+                    "killed_player": killed_player,
+                    "alive_players": players.current_alive,
+                    "moderator": moderator,
+                }
+                
+                result = await witch.night_action(game_state)
+                
+                # 处理解药
+                if result.get("resurrect"):
+                    killed_player = None
+                
+                # 处理毒药
+                if result.get("poison"):
+                    poisoned_player = result.get("poison")
 
             # Seer's turn
             await alive_players_hub.broadcast(
                 await moderator(Prompts.to_all_seer_turn),
             )
-            for agent in players.seer:
-                msg_seer = await agent(
-                    await moderator(
-                        Prompts.to_seer.format(
-                            agent.name,
-                            names_to_str(players.current_alive),
-                        ),
-                    ),
-                    structured_model=get_seer_model(players.current_alive),
-                )
-                if msg_seer.metadata.get("name"):
-                    player = msg_seer.metadata["name"]
-                    await agent.observe(
-                        await moderator(
-                            Prompts.to_seer_result.format(
-                                agent_name=player,
-                                role=players.name_to_role[player],
-                            ),
-                        ),
-                    )
+            for seer in players.seer:
+                game_state = {
+                    "alive_players": players.current_alive,
+                    "moderator": moderator,
+                    "name_to_role": players.name_to_role,
+                }
+                
+                await seer.night_action(game_state)
 
             # Hunter's turn
-            for agent in players.hunter:
+            for hunter in players.hunter:
                 # If killed and not by witch's poison
                 if (
-                    killed_player == agent.name
-                    and poisoned_player != agent.name
+                    killed_player == hunter.name
+                    and poisoned_player != hunter.name
                 ):
-                    shot_player = await hunter_stage(agent, players)
+                    shot_player = await hunter.shoot(players.current_alive, moderator)
 
             # Update alive players
             dead_tonight = [killed_player, poisoned_player, shot_player]
@@ -276,21 +235,22 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
             )
             # Open the auto broadcast to enable discussion
             alive_players_hub.set_auto_broadcast(True)
-            await sequential_pipeline(players.current_alive)
+            # 更新存活智能体列表
+            current_alive_agents = [role.agent for role in players.current_alive]
+            await sequential_pipeline(current_alive_agents)
             # Disable auto broadcast to avoid leaking info
             alive_players_hub.set_auto_broadcast(False)
 
             # Voting
-            msgs_vote = await fanout_pipeline(
-                players.current_alive,
-                await moderator(
-                    Prompts.to_all_vote.format(
-                        names_to_str(players.current_alive),
-                    ),
+            vote_prompt = await moderator(
+                Prompts.to_all_vote.format(
+                    names_to_str(players.current_alive),
                 ),
-                structured_model=get_vote_model(players.current_alive),
-                enable_gather=False,
             )
+            msgs_vote = []
+            for role in players.current_alive:
+                msg = await role.vote(vote_prompt, players.current_alive)
+                msgs_vote.append(msg)
             voted_player, votes = majority_vote(
                 [_.metadata.get("vote") for _ in msgs_vote],
             )
@@ -317,9 +277,9 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
 
             # If the voted player is the hunter, he can shoot someone
             shot_player = None
-            for agent in players.hunter:
-                if voted_player == agent.name:
-                    shot_player = await hunter_stage(agent, players)
+            for hunter in players.hunter:
+                if voted_player == hunter.name:
+                    shot_player = await hunter.shoot(players.current_alive, moderator)
                     if shot_player:
                         await alive_players_hub.broadcast(
                             await moderator(

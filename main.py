@@ -2,10 +2,10 @@
 # flake8: noqa: E501
 """The main entry point for the werewolf game."""
 import asyncio
-from gc import enable
-import os
+import sys
 
 from game import werewolves_game
+from config import config
 
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeMultiAgentFormatter, OpenAIMultiAgentFormatter, OllamaMultiAgentFormatter
@@ -120,72 +120,102 @@ prompt_zh = """你是一个名为{name}的狼人杀游戏玩家。
 
 
 def get_official_agents(name: str) -> ReActAgent:
-    """Get the official werewolves game agents."""
-    agent = ReActAgent(
-        name=name,
-        sys_prompt=prompt_zh.format(name=name),
-        model=DashScopeChatModel(
-            api_key=os.environ.get("DASHSCOPE_API_KEY"),
-            model_name="qwen2.5-32b-instruct",
-        ),
-        formatter=DashScopeMultiAgentFormatter(),
-    )
-
-    # agent = ReActAgent(
-    #     name=name,
-    #     sys_prompt=prompt_zh.format(name=name),
-    #     model=OpenAIChatModel(
-    #         api_key="5a62d5a7216e4872b5581c2b1d235299.Jd0RQWYUSZhxDY8V",
-    #         model_name="glm-4.5-air", 
-    #         client_args={
-    #             "base_url": "https://open.bigmodel.cn/api/paas/v4/",
-    #         },
-    #     ),
-    #     formatter=OpenAIMultiAgentFormatter(),
-    # )
-
-    # agent = ReActAgent(
-    #     name=name,
-    #     sys_prompt=prompt_zh.format(name=name),
-    #     model=OllamaChatModel(
-    #         model_name="qwen2.5:1.5b", 
-    #         # enable_thinking=False,
-    #     ),
-    #     formatter=OllamaMultiAgentFormatter(),
-    # )
+    """Get the official werewolves game agents based on config."""
+    # 根据配置选择提示词语言
+    prompt = prompt_zh if config.game_language == "zh" else prompt_en
+    
+    # 根据配置选择模型
+    if config.model_provider == "dashscope":
+        agent = ReActAgent(
+            name=name,
+            sys_prompt=prompt.format(name=name),
+            model=DashScopeChatModel(
+                api_key=config.dashscope_api_key,
+                model_name="qwen2.5-32b-instruct",
+            ),
+            formatter=DashScopeMultiAgentFormatter(),
+        )
+    elif config.model_provider == "openai":
+        agent = ReActAgent(
+            name=name,
+            sys_prompt=prompt.format(name=name),
+            model=OpenAIChatModel(
+                api_key=config.openai_api_key,
+                model_name=config.openai_model_name,
+                client_args={
+                    "base_url": config.openai_base_url,
+                },
+            ),
+            formatter=OpenAIMultiAgentFormatter(),
+        )
+    elif config.model_provider == "ollama":
+        agent = ReActAgent(
+            name=name,
+            sys_prompt=prompt.format(name=name),
+            model=OllamaChatModel(
+                model_name=config.ollama_model_name,
+            ),
+            formatter=OllamaMultiAgentFormatter(),
+        )
+    else:
+        raise ValueError(f"不支持的模型提供商: {config.model_provider}")
+    
     return agent
 
 
 async def main() -> None:
     """The main entry point for the werewolf game."""
+    
+    # 验证配置
+    is_valid, error_msg = config.validate()
+    if not is_valid:
+        print(f"❌ 配置错误: {error_msg}")
+        print("请检查 .env 文件并设置正确的配置")
+        sys.exit(1)
+    
+    # 打印配置信息
+    config.print_config()
 
-    # Uncomment the following lines if you want to use Agentscope Studio
-    # to visualize the game process.
-    # import agentscope
-    # agentscope.init(
-    #     studio_url="http://localhost:3001",
-    #     project="werewolf_game",
-    # )
+    # 如果启用了 Studio，初始化 AgentScope Studio
+    if config.enable_studio:
+        import agentscope
+        agentscope.init(
+            studio_url=config.studio_url,
+            project=config.studio_project,
+        )
+        print(f"✓ AgentScope Studio 已启用: {config.studio_url}")
 
     # Prepare 9 players, you can change their names here
+    print("\n正在创建 9 个玩家...")
     players = [get_official_agents(f"Player{_ + 1}") for _ in range(9)]
+    print("✓ 玩家创建完成\n")
 
     # Note: You can replace your own agents here, or use all your own agents
 
     # Load states from a previous checkpoint
-    session = JSONSession(save_dir="./checkpoints")
+    print(f"正在加载检查点: {config.checkpoint_dir}/{config.checkpoint_id}.json")
+    session = JSONSession(save_dir=config.checkpoint_dir)
     await session.load_session_state(
-        session_id="players_checkpoint",
+        session_id=config.checkpoint_id,
         **{player.name: player for player in players},
     )
+    print("✓ 检查点加载完成\n")
 
+    print("=" * 50)
+    print("🎮 游戏开始！")
+    print("=" * 50 + "\n")
+    
     await werewolves_game(players)
 
     # Save the states to a checkpoint
+    print(f"\n正在保存检查点: {config.checkpoint_dir}/{config.checkpoint_id}.json")
     await session.save_session_state(
-        session_id="players_checkpoint",
+        session_id=config.checkpoint_id,
         **{player.name: player for player in players},
     )
+    print("✓ 检查点保存完成")
+    print("\n游戏结束！")
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

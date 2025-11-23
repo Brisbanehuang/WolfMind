@@ -5,14 +5,18 @@ from typing import Any
 
 import numpy as np
 
-# from prompt import EnglishPrompts as Prompts
-from prompt import ChinesePrompts as Prompts
+from config import config
+from prompt import EnglishPrompts, ChinesePrompts
 
 from agentscope.message import Msg
 from agentscope.agent import ReActAgent, AgentBase
 
-MAX_GAME_ROUND = 30  # 最大回合数
-MAX_DISCUSSION_ROUND = 3  # 白天讨论阶段的最大讨论轮数
+# 从配置文件读取游戏参数
+MAX_GAME_ROUND = config.max_game_round  # 最大回合数
+MAX_DISCUSSION_ROUND = config.max_discussion_round  # 白天讨论阶段的最大讨论轮数
+
+# 根据配置选择提示词语言
+Prompts = ChinesePrompts if config.game_language == "zh" else EnglishPrompts
 
 
 def majority_vote(votes: list[str]) -> tuple:
@@ -25,22 +29,37 @@ def majority_vote(votes: list[str]) -> tuple:
     return result, conditions
 
 
-def names_to_str(agents: list[str] | list[ReActAgent]) -> str:
-    """Return a string of agent names."""
+def names_to_str(agents: list[str] | list[ReActAgent] | list) -> str:
+    """Return a string of agent names.
+    
+    Args:
+        agents: 可以是字符串列表、智能体列表或角色对象列表
+    """
     if not agents:
         return ""
 
     if len(agents) == 1:
-        if isinstance(agents[0], ReActAgent):
-            return agents[0].name
-        return agents[0]
+        item = agents[0]
+        if isinstance(item, str):
+            return item
+        elif isinstance(item, ReActAgent):
+            return item.name
+        elif hasattr(item, 'name'):  # 角色对象
+            return item.name
+        else:
+            return str(item)
 
     names = []
     for agent in agents:
-        if isinstance(agent, ReActAgent):
+        if isinstance(agent, str):
+            names.append(agent)
+        elif isinstance(agent, ReActAgent):
+            names.append(agent.name)
+        elif hasattr(agent, 'name'):  # 角色对象
             names.append(agent.name)
         else:
-            names.append(agent)
+            names.append(str(agent))
+    
     return ", ".join([*names[:-1], "and " + names[-1]])
 
 
@@ -78,18 +97,20 @@ class Players:
     def __init__(self) -> None:
         """Initialize the players."""
         # The mapping from player name to role
-        self.name_to_role = {}  # 玩家名称到角色的映射
+        self.name_to_role = {}  # 玩家名称到角色字符串的映射
         self.role_to_names = defaultdict(list)  # 角色到玩家名称列表的映射
         self.name_to_agent = {}  # 玩家名称到智能体的映射
-        self.werewolves = []  # 狼人玩家列表
-        self.villagers = []  # 村民玩家列表
-        self.seer = []  # 预言家玩家列表
-        self.hunter = []  # 猎人玩家列表
-        self.witch = []  # 女巫玩家列表
-        self.current_alive = []  # 当前存活玩家列表
-        self.all_players = []  # 所有玩家列表
+        self.name_to_role_obj = {}  # 玩家名称到角色对象的映射 (新增)
+        self.werewolves = []  # 狼人角色对象列表
+        self.villagers = []  # 村民角色对象列表
+        self.seer = []  # 预言家角色对象列表
+        self.hunter = []  # 猎人角色对象列表
+        self.witch = []  # 女巫角色对象列表
+        self.current_alive = []  # 当前存活角色对象列表
+        self.all_players = []  # 所有智能体列表
+        self.all_roles = []  # 所有角色对象列表 (新增)
 
-    def add_player(self, player: ReActAgent, role: str) -> None:
+    def add_player(self, player: ReActAgent, role: str, role_obj=None) -> None:
         """Add a player to the game.
 
         Args:
@@ -97,32 +118,45 @@ class Players:
                 The player to be added.
             role (`str`):
                 The role of the player.
+            role_obj:
+                The role object instance (新增参数)
         """
         self.name_to_role[player.name] = role
         self.name_to_agent[player.name] = player
         self.role_to_names[role].append(player.name)
         self.all_players.append(player)
+        
+        if role_obj:
+            self.name_to_role_obj[player.name] = role_obj
+            self.all_roles.append(role_obj)
+        
         if role == "werewolf":
-            self.werewolves.append(player)
+            self.werewolves.append(role_obj if role_obj else player)
         elif role == "villager":
-            self.villagers.append(player)
+            self.villagers.append(role_obj if role_obj else player)
         elif role == "seer":
-            self.seer.append(player)
+            self.seer.append(role_obj if role_obj else player)
         elif role == "hunter":
-            self.hunter.append(player)
+            self.hunter.append(role_obj if role_obj else player)
         elif role == "witch":
-            self.witch.append(player)
+            self.witch.append(role_obj if role_obj else player)
         else:
             raise ValueError(f"Unknown role: {role}")
-        self.current_alive.append(player)
+        self.current_alive.append(role_obj if role_obj else player)
 
-    def update_players(self, dead_players: list[ReActAgent]) -> None:
+    def update_players(self, dead_players: list[str]) -> None:
         """Update the current alive players.
 
         Args:
-            dead_players (`list[ReActAgent]`):
-                A list of dead players to be removed.
+            dead_players (`list[str]`):
+                A list of dead player names to be removed.
         """
+        # 标记角色对象为死亡
+        for name in dead_players:
+            if name and name in self.name_to_role_obj:
+                self.name_to_role_obj[name].kill()
+        
+        # 更新存活列表
         self.werewolves = [
             _ for _ in self.werewolves if _.name not in dead_players
         ]
