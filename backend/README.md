@@ -11,6 +11,7 @@ backend/
 ├── core/                # 核心游戏逻辑
 │   ├── __init__.py
 │   ├── game_engine.py   # 游戏引擎
+│   ├── game_logger.py   # 游戏日志记录器 ⭐
 │   ├── roles.py         # 角色系统
 │   ├── prompts.py       # 提示词
 │   ├── structured_model.py  # 结构化模型
@@ -115,7 +116,7 @@ ENABLE_STUDIO=false
 STUDIO_URL=http://localhost:3001
 STUDIO_PROJECT=werewolf_game
 
-# 检查点配置
+# 检查点配置（相对于 backend 目录）
 CHECKPOINT_DIR=./data/checkpoints
 CHECKPOINT_ID=players_checkpoint
 ```
@@ -145,11 +146,68 @@ CHECKPOINT_ID=players_checkpoint
 ### core/utils.py
 工具函数，包括投票统计、玩家管理等
 
+### core/game_logger.py
+游戏日志记录器，自动记录每局游戏的详细信息到 `.log` 文件
+
+## 游戏日志
+
+每局游戏都会自动生成详细的日志文件，保存在 `backend/data/game_logs/` 目录下。
+
+### 日志格式
+
+日志文件名格式：`game_YYYYMMDD_HHMMSS.log`
+
+日志内容包括：
+- 游戏基本信息（游戏ID、开始时间）
+- 玩家列表及角色分配
+- 每回合的详细记录：
+  - 夜晚阶段：狼人讨论、狼人投票、女巫行动、预言家查验、猎人开枪
+  - 白天阶段：公告、白天讨论、投票、遗言
+  - 死亡信息
+
+### 日志示例
+
+```
+================================================================================
+狼人杀游戏日志
+游戏ID: 20251123_173343
+开始时间: 2025-11-23 17:33:43
+================================================================================
+
+玩家列表:
+- Player1: werewolf
+- Player2: villager
+- Player3: seer
+...
+
+第 1 回合
+--------------------------------------------------------------------------------
+
+【夜晚阶段】
+[17:33:44] [狼人讨论] Player1: 我们淘汰Player5吧。
+[17:33:50] [狼人投票] Player1 投票给 Player5
+[17:33:55] [狼人投票结果] Player5 被选中击杀 (票数: Player5: 3)
+[17:33:57] [女巫行动] 使用解药救了 Player5
+[17:33:59] [预言家查验] 查验 Player4, 结果: villager
+[17:33:59] [夜晚死亡] 无
+
+【白天阶段】
+[17:33:59] [公告] 天亮了，请所有玩家睁眼。昨晚平安夜，无人被淘汰。
+[17:34:02] [白天讨论] Player4: 我认为我们应该仔细观察...
+[17:34:24] [投票] Player4 投票给 Player5
+[17:34:44] [投票结果] Player5 被投出 (票数: Player4: 2, Player5: 7)
+[17:34:46] [遗言] Player5: 我认为我们应该继续保持警惕...
+[17:34:46] [白天死亡] Player5
+```
+
 ## 测试
 
 ```bash
 # 测试模块导入
 python test_import.py
+
+# 测试日志功能
+python test_logger.py
 
 # 应该看到所有模块导入成功
 ```

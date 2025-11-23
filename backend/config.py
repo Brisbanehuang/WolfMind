@@ -104,7 +104,7 @@ class Config:
     @property
     def checkpoint_dir(self) -> str:
         """检查点保存目录"""
-        return os.environ.get("CHECKPOINT_DIR", "./checkpoints")
+        return os.environ.get("CHECKPOINT_DIR", "./data/checkpoints")
     
     @property
     def checkpoint_id(self) -> str:

@@ -2,6 +2,7 @@
 # pylint: disable=too-many-branches, too-many-statements, no-name-in-module
 """A werewolf game implemented by agentscope."""
 from typing import Any
+from datetime import datetime
 from agentscope.message._message_base import Msg
 import numpy as np
 
@@ -15,6 +16,7 @@ from core.utils import (
     Players,
     Prompts,
 )
+from core.game_logger import GameLogger
 from models.schemas import (
     DiscussionModel,
     get_vote_model,
@@ -47,6 +49,10 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
             A list of 9 agents.
     """
     assert len(agents) == 9, "The werewolf game needs exactly 9 players."
+
+    # 初始化游戏日志
+    game_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    logger = GameLogger(game_id)
 
     # Init the players' status
     players = Players()
@@ -84,9 +90,15 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
 
     # Printing the roles
     players.print_roles()
+    
+    # 记录玩家列表到日志
+    players_info = [(name, role) for name, role in players.name_to_role.items()]
+    logger.log_players(players_info)
 
     # GAME BEGIN!
-    for _ in range(MAX_GAME_ROUND):
+    for round_num in range(1, MAX_GAME_ROUND + 1):
+        # 开始新回合
+        logger.start_round(round_num)
         # Create a MsgHub for all players to broadcast messages
         alive_agents = [role.agent for role in players.current_alive]
         async with MsgHub(
@@ -95,6 +107,7 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
             name="alive_players",
         ) as alive_players_hub:
             # Night phase
+            logger.start_night()
             await alive_players_hub.broadcast(
                 await moderator(Prompts.to_all_night),
             )
@@ -119,7 +132,10 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                     werewolf = players.werewolves[_ % n_werewolves]
                     res = await werewolf.discuss_with_team(
                         await moderator(""),
-                    ) 
+                    )
+                    # 记录狼人讨论
+                    if res.content:
+                        logger.log_message("狼人讨论", res.content, werewolf.name)
                     if _ % n_werewolves == 0 and res.metadata.get(
                         "reach_agreement",
                     ):
@@ -133,10 +149,17 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 for werewolf in players.werewolves:
                     msg = await werewolf.team_vote(vote_prompt, players.current_alive)
                     msgs_vote.append(msg)
+                    # 记录狼人投票
+                    target = msg.metadata.get("vote")
+                    if target:
+                        logger.log_vote(werewolf.name, target, "狼人投票")
                 
                 killed_player, votes = majority_vote(
                     [_.metadata.get("vote") for _ in msgs_vote],
                 )
+                # 记录狼人投票结果
+                logger.log_vote_result(killed_player, votes, "狼人投票结果")
+                
                 # Postpone the broadcast of voting
                 await werewolves_hub.broadcast(
                     [
@@ -162,11 +185,13 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 
                 # 处理解药
                 if result.get("resurrect"):
+                    logger.log_action("女巫行动", f"使用解药救了 {killed_player}")
                     killed_player = None
                 
                 # 处理毒药
                 if result.get("poison"):
                     poisoned_player = result.get("poison")
+                    logger.log_action("女巫行动", f"使用毒药毒杀了 {poisoned_player}")
 
             # Seer's turn
             await alive_players_hub.broadcast(
@@ -179,7 +204,13 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                     "name_to_role": players.name_to_role,
                 }
                 
-                await seer.night_action(game_state)
+                result = await seer.night_action(game_state)
+                # 记录预言家查验
+                if result and result.get("action") == "check":
+                    checked_player = result.get("target")
+                    role_result = result.get("result")
+                    if checked_player and role_result:
+                        logger.log_action("预言家查验", f"查验 {checked_player}, 结果: {role_result}")
 
             # Hunter's turn
             for hunter in players.hunter:
@@ -189,13 +220,20 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                     and poisoned_player != hunter.name
                 ):
                     shot_player = await hunter.shoot(players.current_alive, moderator)
+                    if shot_player:
+                        logger.log_action("猎人开枪", f"猎人 {hunter.name} 开枪击杀了 {shot_player}")
 
             # Update alive players
             dead_tonight = [killed_player, poisoned_player, shot_player]
+            # 记录夜晚死亡
+            logger.log_death("夜晚死亡", [p for p in dead_tonight if p])
             players.update_players(dead_tonight)
 
             # Day phase
+            logger.start_day()
             if len([_ for _ in dead_tonight if _]) > 0:
+                announcement = f"天亮了，请所有玩家睁眼。昨晚 {names_to_str([_ for _ in dead_tonight if _])} 被淘汰。"
+                logger.log_announcement(announcement)
                 await alive_players_hub.broadcast(
                     await moderator(
                         Prompts.to_all_day.format(
@@ -212,9 +250,12 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                     await alive_players_hub.broadcast(msg_moderator)
                     # Leave a message
                     last_msg = await players.name_to_agent[killed_player]()
+                    if last_msg.content:
+                        logger.log_last_words(killed_player, last_msg.content)
                     await alive_players_hub.broadcast(last_msg)
 
             else:
+                logger.log_announcement("天亮了，请所有玩家睁眼。昨晚平安夜，无人被淘汰。")
                 await alive_players_hub.broadcast(
                     await moderator(Prompts.to_all_peace),
                 )
@@ -222,7 +263,9 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
             # Check winning
             res = players.check_winning()
             if res:
+                logger.log_announcement(f"游戏结束: {res}")
                 await moderator(res)
+                logger.close()
                 break
 
             # Discussion
@@ -237,7 +280,15 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
             alive_players_hub.set_auto_broadcast(True)
             # 更新存活智能体列表
             current_alive_agents = [role.agent for role in players.current_alive]
-            await sequential_pipeline(current_alive_agents)
+            
+            # 使用 sequential_pipeline 进行讨论，并记录每个玩家的发言
+            discussion_msgs = []
+            for agent in current_alive_agents:
+                msg = await agent()
+                discussion_msgs.append(msg)
+                if msg.content:
+                    logger.log_message("白天讨论", msg.content, agent.name)
+            
             # Disable auto broadcast to avoid leaking info
             alive_players_hub.set_auto_broadcast(False)
 
@@ -251,9 +302,18 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
             for role in players.current_alive:
                 msg = await role.vote(vote_prompt, players.current_alive)
                 msgs_vote.append(msg)
+                # 记录投票
+                target = msg.metadata.get("vote")
+                if target:
+                    logger.log_vote(role.name, target, "投票")
+            
             voted_player, votes = majority_vote(
                 [_.metadata.get("vote") for _ in msgs_vote],
             )
+            # 记录投票结果
+            if voted_player:
+                logger.log_vote_result(voted_player, votes, "投票结果", "被投出")
+            
             # Broadcast the voting messages together to avoid influencing
             # each other
             voting_msgs = [
@@ -271,6 +331,8 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 last_msg = await players.name_to_agent[voted_player](
                     prompt_msg,
                 )
+                if last_msg.content:
+                    logger.log_last_words(voted_player, last_msg.content)
                 voting_msgs.extend([prompt_msg, last_msg])
 
             await alive_players_hub.broadcast(voting_msgs)
@@ -281,6 +343,7 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 if voted_player == hunter.name:
                     shot_player = await hunter.shoot(players.current_alive, moderator)
                     if shot_player:
+                        logger.log_action("猎人开枪", f"猎人 {hunter.name} 开枪击杀了 {shot_player}")
                         await alive_players_hub.broadcast(
                             await moderator(
                                 Prompts.to_all_hunter_shoot.format(
@@ -291,14 +354,18 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
 
             # Update alive players
             dead_today = [voted_player, shot_player]
+            # 记录白天死亡
+            logger.log_death("白天死亡", [p for p in dead_today if p])
             players.update_players(dead_today)
 
             # Check winning
             res = players.check_winning()
             if res:
+                logger.log_announcement(f"游戏结束: {res}")
                 async with MsgHub(players.all_players) as all_players_hub:
                     res_msg = await moderator(res)
                     await all_players_hub.broadcast(res_msg)
+                logger.close()
                 break
 
         # The day ends
@@ -309,3 +376,6 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
         agents=agents,
         msg=await moderator[Any, Any, Msg](Prompts.to_all_reflect),
     )
+    
+    # 确保日志文件关闭
+    logger.close()
