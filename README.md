@@ -1,171 +1,191 @@
-# 🐺⚔️👨‍🌾 Nine-Player Werewolves Game
+# 🐺⚔️👨‍🌾 狼人杀游戏（Nine-Player Werewolves Game）
 
-This is a nine-players werewolves game example built using AgentScope, showcasing **multi-agent interactions**,
-**role-based gameplay**, and **structured output handling**.
-Specifically, this game is consisted of
+基于 AgentScope 的多智能体狼人杀游戏，支持前后端分离架构。
 
-- three villagers 👨‍🌾,
-- three werewolves 🐺,
-- one seer 🔮,
-- one witch 🧙‍♀️ and
-- one hunter 🏹.
+## 项目结构
 
-## ✨Changelog
+```
+werewolf-game/
+├── backend/                 # 后端目录
+│   ├── main.py             # 应用入口
+│   ├── config.py           # 配置管理
+│   ├── core/               # 核心游戏逻辑
+│   │   ├── game_engine.py  # 游戏引擎
+│   │   ├── roles.py        # 角色系统
+│   │   ├── prompts.py      # 提示词
+│   │   ├── structured_model.py  # 结构化模型
+│   │   └── utils.py        # 工具函数
+│   ├── api/                # API 路由（待实现）
+│   ├── services/           # 业务服务（待实现）
+│   ├── models/             # 数据模型（待实现）
+│   ├── data/               # 数据目录
+│   ├── .env                # 环境变量
+│   └── requirements.txt    # Python 依赖
+│
+├── frontend/               # 前端目录（待实现）
+│   └── README.md
+│
+├── data/                   # 原数据目录（保留）
+├── config.py              # 原配置文件（保留）
+├── game.py                # 原游戏文件（保留）
+├── main.py                # 原入口文件（保留）
+└── README.md              # 项目总览
+```
 
-- **2025-11-23**: Configuration management system:
-    - ✅ Added `.env` file support for secure configuration management
-    - ✅ Created `config.py` module for centralized configuration
-    - ✅ All API keys and settings now managed through `.env` file
-    - ✅ No need to modify code to change configurations
-    - ✅ Added comprehensive configuration documentation
-    - See `配置说明.md` for detailed guide
+## 快速开始
 
-- **2025-11-22**: Major refactoring - Role-based architecture:
-    - Refactored each identity into independent classes (Werewolf, Villager, Seer, Witch, Hunter)
-    - Better code organization and easier to extend with new roles
-    - Each role maintains its own state (e.g., witch's potions, seer's checked players)
-    - Added `RoleFactory` for creating role instances
-    - See `角色系统说明.md` for detailed documentation
-
-- 2025-10: We update the example to support more features:
-    - Allow the dead players to leave messages.
-    - Support Chinese now.
-    - Support **continuous gaming** by loading and saving session states, so the same agents can play multiple games and continue learning and optimizing their strategies.
-
-
-## QuickStart
-
-### 1. Install Dependencies
+### 方式一：使用重构后的后端（推荐）
 
 ```bash
+# 1. 进入后端目录
+cd backend
+
+# 2. 安装依赖
 pip install -r requirements.txt
-```
 
-### 2. Configure Settings
+# 3. 配置环境变量
+copy .env.example .env
+# 编辑 .env 文件，填入你的 API Key
 
-```bash
-# Copy the example config file
-cp .env.example .env
-
-# Edit .env and fill in your API key
-# For example:
-# MODEL_PROVIDER=dashscope
-# DASHSCOPE_API_KEY=your_api_key_here
-# GAME_LANGUAGE=zh
-```
-
-### 3. Run the Game
-
-```bash
+# 4. 运行游戏
 python main.py
 ```
 
-> Note:
-> - All configurations are managed in the `.env` file
-> - See `配置说明.md` (Configuration Guide) for detailed settings
-> - Different models may yield different game experiences
-
-Running the example with AgentScope Studio provides a more interactive experience.
-
-- Demo Video in Chinese (click to play):
-
-[![Werewolf Game in Chinese](https://img.alicdn.com/imgextra/i3/6000000007235/O1CN011pK6Be23JgcdLWmLX_!!6000000007235-0-tbvideo.jpg)](https://cloud.video.taobao.com/vod/KxyR66_CWaWwu76OPTvOV2Ye1Gas3i5p4molJtzhn_s.mp4)
-
-- Demo Video in English (click to play):
-
-[![Werewolf Game in English](https://img.alicdn.com/imgextra/i3/6000000007389/O1CN011alyGK24SDcFBzHea_!!6000000007389-0-tbvideo.jpg)](https://cloud.video.taobao.com/vod/bMiRTfxPg2vm76wEoaIP2eJfkCi8CUExHRas-1LyK1I.mp4)
-
-## Details
-
-The game is built with the ``ReActAgent`` in AgentScope, utilizing its ability to generate structured outputs to
-control the game flow and interactions.
-We also use the ``MsgHub`` and pipelines in AgentScope to manage the complex interactions like discussion and voting.
-It's very interesting to see how agents play the werewolf game with different roles and objectives.
-
-### Project Structure
-
-```
-.
-├── main.py                 # Entry point
-├── game.py                 # Game main logic
-├── roles.py                # Role classes (NEW!)
-├── config.py               # Configuration management (NEW!)
-├── utils.py                # Utility functions
-├── structured_model.py     # Structured output models
-├── prompt.py               # Game prompts
-├── test_roles.py           # Role system tests (NEW!)
-├── .env.example            # Example configuration (NEW!)
-├── .env                    # Your configuration (NEW!)
-├── 角色系统说明.md          # Role system documentation (NEW!)
-└── 配置说明.md             # Configuration guide (NEW!)
-```
-
-### Role System
-
-Each identity is now implemented as a separate class:
-
-- **BaseRole**: Abstract base class for all roles
-- **Werewolf**: Team discussion and voting
-- **Villager**: Basic role with no special abilities
-- **Seer**: Check one player's identity each night
-- **Witch**: Use healing/poison potions
-- **Hunter**: Shoot someone when eliminated
-
-Benefits:
-- ✅ Clear code organization
-- ✅ Easy to add new roles
-- ✅ Better state management
-- ✅ Type-safe and testable
-
-# Advanced Usage
-
-## Change Language
-
-Simply edit the `.env` file:
+### 方式二：使用原有代码
 
 ```bash
-GAME_LANGUAGE=zh  # Chinese
-# or
-GAME_LANGUAGE=en  # English
+# 1. 安装依赖
+pip install -r requirements.txt
+
+# 2. 配置环境变量
+copy .env.example .env
+# 编辑 .env 文件
+
+# 3. 运行游戏
+python main.py
 ```
 
-## Change Models
+## 项目特点
 
-Edit the `.env` file to switch between different model providers:
+### ✨ 已实现功能
+
+- ✅ 多智能体交互系统
+- ✅ 角色系统（狼人、村民、预言家、女巫、猎人）
+- ✅ 完整的游戏流程（夜晚/白天阶段）
+- ✅ 结构化输出处理
+- ✅ 配置管理系统（.env 文件）
+- ✅ 多语言支持（中文/英文）
+- ✅ 多模型支持（DashScope/OpenAI/Ollama）
+- ✅ 游戏状态保存与加载
+- ✅ 清晰的代码结构
+
+### 🚧 待实现功能
+
+- [ ] FastAPI REST API
+- [ ] WebSocket 实时通信
+- [ ] React 前端界面
+- [ ] 游戏房间管理
+- [ ] 用户认证系统
+- [ ] 游戏历史记录
+- [ ] 游戏回放功能
+
+## 游戏规则
+
+- **3 只狼人** 🐺：每晚杀死一名玩家
+- **3 名村民** 👨‍🌾：普通玩家
+- **1 名预言家** 🔮：每晚查验一名玩家身份
+- **1 名女巫** 🧙‍♀️：拥有解药和毒药
+- **1 名猎人** 🏹：被淘汰时可以带走一人
+
+## 配置说明
+
+所有配置都在 `.env` 文件中管理：
 
 ```bash
-# Use DashScope (Alibaba Cloud)
-MODEL_PROVIDER=dashscope
-DASHSCOPE_API_KEY=your_key
+# 模型提供商
+MODEL_PROVIDER=dashscope  # dashscope/openai/ollama
 
-# Use OpenAI-compatible API (e.g., Zhipu AI)
-MODEL_PROVIDER=openai
-OPENAI_API_KEY=your_key
-OPENAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4/
-OPENAI_MODEL_NAME=glm-4.5-air
+# API Keys
+DASHSCOPE_API_KEY=your_key_here
+OPENAI_API_KEY=your_key_here
 
-# Use local Ollama model
-MODEL_PROVIDER=ollama
-OLLAMA_MODEL_NAME=qwen2.5:1.5b
-```
+# 游戏设置
+GAME_LANGUAGE=zh  # zh/en
+MAX_GAME_ROUND=30
+MAX_DISCUSSION_ROUND=3
 
-## Enable AgentScope Studio
-
-Edit the `.env` file:
-
-```bash
-ENABLE_STUDIO=true
+# AgentScope Studio
+ENABLE_STUDIO=false
 STUDIO_URL=http://localhost:3001
-STUDIO_PROJECT=werewolf_game
 ```
 
-## Play with Agents
+## 开发路线图
 
-You can replace one of the agents with a `UserAgent` to play with AI agents by modifying `main.py`.
+### Phase 1: 代码重构 ✅
+- [x] 创建清晰的项目结构
+- [x] 分离核心逻辑和业务逻辑
+- [x] 优化代码组织
 
-## Further Reading
+### Phase 2: 后端 API（进行中）
+- [ ] 实现 FastAPI 应用
+- [ ] 创建 REST API 端点
+- [ ] 实现 WebSocket 通信
+- [ ] 添加游戏房间管理
 
-- [Structured Output](https://doc.agentscope.io/tutorial/task_agent.html#structured-output)
-- [MsgHub and Pipelines](https://doc.agentscope.io/tutorial/task_pipeline.html)
-- [Prompt Formatter](https://doc.agentscope.io/tutorial/task_prompt.html)
-- [AgentScope Studio](https://doc.agentscope.io/tutorial/task_studio.html)
+### Phase 3: 前端开发
+- [ ] 搭建 React 项目
+- [ ] 实现游戏界面
+- [ ] 对接后端 API
+- [ ] 实现实时通信
+
+### Phase 4: 功能完善
+- [ ] 用户认证
+- [ ] 游戏历史
+- [ ] 游戏回放
+- [ ] 性能优化
+
+## 技术栈
+
+### 后端
+- **框架**: AgentScope
+- **语言**: Python 3.8+
+- **AI 模型**: DashScope / OpenAI / Ollama
+- **配置管理**: python-dotenv
+
+### 前端（计划）
+- **框架**: React 18
+- **语言**: TypeScript
+- **构建工具**: Vite
+- **状态管理**: Redux Toolkit
+- **实时通信**: WebSocket
+
+## 贡献指南
+
+欢迎贡献代码！请查看各子目录的 README 了解详细信息。
+
+## 许可证
+
+MIT License
+
+## 更新日志
+
+- **2025-11-23**: 项目结构优化
+  - ✅ 简化后端目录结构（移除 app 嵌套）
+  - ✅ 直接使用 main.py 作为入口
+  - ✅ 更清晰的代码组织
+
+- **2025-11-23**: 项目结构重构
+  - ✅ 创建前后端分离的目录结构
+  - ✅ 重构核心代码到 backend/core
+  - ✅ 保留原有代码以确保兼容性
+  - ✅ 添加详细的 README 文档
+
+- **2025-11-23**: 配置管理系统
+  - ✅ 添加 .env 文件支持
+  - ✅ 创建 config.py 模块
+  - ✅ 所有配置通过 .env 管理
+
+- **2025-11-22**: 角色系统重构
+  - ✅ 每个角色独立类实现
+  - ✅ 更好的代码组织
+  - ✅ 添加 RoleFactory

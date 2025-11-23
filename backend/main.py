@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-# flake8: noqa: E501
-"""The main entry point for the werewolf game."""
+"""Backend main entry point - 重构后的主入口"""
 import asyncio
 import sys
 
-from game import werewolves_game
+from core.game_engine import werewolves_game
 from config import config
 
 from agentscope.agent import ReActAgent

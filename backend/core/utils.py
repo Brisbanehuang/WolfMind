@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 
 from config import config
-from prompt import EnglishPrompts, ChinesePrompts
+from prompts import EnglishPrompts, ChinesePrompts
 
 from agentscope.message import Msg
 from agentscope.agent import ReActAgent, AgentBase

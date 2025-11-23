@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from agentscope.agent import ReActAgent
 from agentscope.message import Msg
 
-from structured_model import (
+from models.schemas import (
     DiscussionModel,
     get_vote_model,
     get_poison_model,

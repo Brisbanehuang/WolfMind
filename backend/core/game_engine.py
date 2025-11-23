@@ -6,7 +6,7 @@ from agentscope.message._message_base import Msg
 import numpy as np
 
 from config import config
-from utils import (
+from core.utils import (
     majority_vote,
     names_to_str,
     EchoAgent,
@@ -15,11 +15,11 @@ from utils import (
     Players,
     Prompts,
 )
-from structured_model import (
+from models.schemas import (
     DiscussionModel,
     get_vote_model,
 )
-from roles import (
+from models.roles import (
     RoleFactory,
     Werewolf,
     Villager,
