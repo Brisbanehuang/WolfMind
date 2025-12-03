@@ -24,7 +24,7 @@
 - 🎭 **完整角色系统**：支持狼人、村民、预言家、女巫、猎人等经典角色
 - 📝 **详细游戏日志**：自动记录每局游戏的完整过程，便于分析和回放
 - 🔄 **检查点机制**：支持游戏状态保存和恢复
-- 🌐 **多模型支持**：兼容 DashScope（通义千问）、OpenAI、Ollama 等多种 LLM
+- 🌐 **多模型支持**：兼容 DashScope（通义千问）、OpenAI等多种 LLM
 - 🌍 **中英双语**：支持中文和英文游戏提示词
 
 ## 功能特性
@@ -46,11 +46,8 @@
 - 🚧 经验回放和策略知识库
 - 🚧 玩家画像和对手建模
 - 🚧 概率推理和信任度系统
-- 🚧 REST API 和 WebSocket 支持
 - 🚧 Web 前端界面
-- 🚧 游戏房间管理
 
-详见 [AI 智能体增强需求文档](.kiro/specs/ai-agent-enhancement/requirements.md)
 
 ## 快速开始
 
@@ -64,7 +61,7 @@
 1. **克隆项目**
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/KeLuoJun/werewolves.git
 cd werewolf-game
 ```
 
@@ -106,14 +103,14 @@ python main.py
 
 就这么简单！游戏将自动开始，你可以在终端看到 AI 智能体之间的对话和游戏进程。
 
-## 项目结构
+## 项目文件结构树
 
 ```
 werewolf-game/
-├── backend/                    # 后端核心代码
-│   ├── main.py                # 应用入口
-│   ├── config.py              # 配置管理
-│   ├── core/                  # 核心游戏逻辑
+├── backend/                  # 后端核心代码
+│   ├── main.py               # 应用入口
+│   ├── config.py             # 配置管理
+│   ├── core/                 # 核心游戏逻辑
 │   │   ├── game_engine.py    # 游戏引擎
 │   │   ├── game_logger.py    # 游戏日志记录器
 │   │   └── utils.py          # 工具函数
@@ -127,86 +124,11 @@ werewolf-game/
 │   │   └── game_logs/        # 游戏日志
 │   ├── .env.example          # 环境变量示例
 │   └── requirements.txt      # Python 依赖
-├── frontend/                  # 前端（待开发）
-├── .kiro/                    # Kiro AI 助手配置
-│   └── specs/                # 功能规格文档
-│       └── ai-agent-enhancement/  # AI 智能体增强
+├── frontend/                 # 前端（待开发）
 └── README.md                 # 项目说明文档
 ```
 
-## 配置说明
 
-所有配置都在 `backend/.env` 文件中管理。
-
-### 必需配置
-
-```bash
-# 模型提供商（必选其一）
-MODEL_PROVIDER=dashscope  # dashscope/openai/ollama
-
-# API Keys（根据选择的提供商配置）
-DASHSCOPE_API_KEY=your_key_here        # 阿里云通义千问
-# 或
-OPENAI_API_KEY=your_key_here           # OpenAI 或兼容接口
-
-# 游戏语言
-GAME_LANGUAGE=zh  # zh=中文, en=英文
-```
-
-### 可选配置
-
-```bash
-# OpenAI 配置
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL_NAME=gpt-3.5-turbo
-
-# Ollama 配置（本地模型）
-OLLAMA_MODEL_NAME=qwen2.5:1.5b
-
-# 游戏参数
-MAX_GAME_ROUND=30              # 最大游戏轮数
-MAX_DISCUSSION_ROUND=3         # 每个狼人的最大讨论轮数
-
-# AgentScope Studio（可视化调试）
-ENABLE_STUDIO=false
-STUDIO_URL=http://localhost:3001
-STUDIO_PROJECT=werewolf_game
-
-# 检查点配置
-CHECKPOINT_DIR=./data/checkpoints
-CHECKPOINT_ID=players_checkpoint
-```
-
-### 支持的模型提供商
-
-#### 1. DashScope（阿里云通义千问）
-
-```bash
-MODEL_PROVIDER=dashscope
-DASHSCOPE_API_KEY=your_api_key
-```
-
-获取 API Key：https://dashscope.console.aliyun.com/
-
-#### 2. OpenAI（或兼容接口）
-
-```bash
-MODEL_PROVIDER=openai
-OPENAI_API_KEY=your_api_key
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL_NAME=gpt-3.5-turbo
-```
-
-支持 OpenAI 兼容接口，如智谱 AI、DeepSeek 等。
-
-#### 3. Ollama（本地模型）
-
-```bash
-MODEL_PROVIDER=ollama
-OLLAMA_MODEL_NAME=qwen2.5:1.5b
-```
-
-需要先安装 Ollama：https://ollama.ai/
 
 ## 游戏规则
 
@@ -241,13 +163,6 @@ OLLAMA_MODEL_NAME=qwen2.5:1.5b
 
 每局游戏都会自动生成详细的日志文件，保存在 `backend/data/game_logs/` 目录。
 
-### 日志文件命名
-
-```
-game_YYYYMMDD_HHMMSS.log
-```
-
-例如：`game_20251123_173343.log`
 
 ### 日志内容
 
@@ -290,112 +205,7 @@ game_YYYYMMDD_HHMMSS.log
 [17:34:44] [投票结果] Player5 被投出 (票数: Player5: 7)
 ```
 
-## 核心模块说明
 
-### 游戏引擎（game_engine.py）
-
-控制游戏流程的核心模块，负责：
-- 游戏阶段切换（夜晚/白天）
-- 角色行动协调
-- 投票统计和结果处理
-- 胜负判定
-- 游戏日志记录
-
-### 角色系统（roles.py）
-
-每个角色都有独立的类和行为逻辑：
-- `BaseRole`：角色基类，定义通用接口
-- `Werewolf`：狼人，支持团队讨论和投票
-- `Villager`：村民，基础角色
-- `Seer`：预言家，夜晚查验身份
-- `Witch`：女巫，使用解药和毒药
-- `Hunter`：猎人，死亡时开枪
-
-### 配置管理（config.py）
-
-从 `.env` 文件读取配置，支持：
-- 多模型提供商切换
-- 游戏参数调整
-- 检查点路径配置
-- 配置验证和打印
-
-### 游戏日志（game_logger.py）
-
-自动记录游戏详细过程：
-- 玩家列表和角色分配
-- 每回合的所有行动
-- 发言、投票、技能使用
-- 死亡信息和游戏结果
-
-## 开发路线
-
-### Phase 1: 核心游戏系统 ✅
-
-- [x] 基础游戏流程
-- [x] 角色系统
-- [x] 智能体交互
-- [x] 游戏日志
-
-### Phase 2: AI 智能体增强 🚧
-
-- [ ] 经验回放和学习
-- [ ] 策略知识库
-- [ ] 玩家画像系统
-- [ ] 对手建模
-- [ ] 概率推理引擎
-- [ ] 信任度系统
-
-详见 [AI 智能体增强规格文档](.kiro/specs/ai-agent-enhancement/)
-
-### Phase 3: Web 服务 📋
-
-- [ ] FastAPI REST API
-- [ ] WebSocket 实时通信
-- [ ] 游戏房间管理
-- [ ] 用户认证系统
-
-### Phase 4: 前端界面 📋
-
-- [ ] React 前端应用
-- [ ] 游戏大厅
-- [ ] 实时游戏界面
-- [ ] 历史记录查看
-
-## 常见问题
-
-### 找不到 .env 文件
-
-```bash
-cd backend
-copy .env.example .env  # Windows
-# 或
-cp .env.example .env    # Linux/Mac
-```
-
-然后编辑 `.env` 文件，填入你的 API Key。
-
-### API Key 错误
-
-检查 `.env` 文件中的配置：
-- 确保 `MODEL_PROVIDER` 设置正确
-- 确保对应的 API Key 有效且有余额
-- 检查网络连接
-
-### 模块导入错误
-
-确保在 `backend` 目录下运行：
-
-```bash
-cd backend
-python main.py
-```
-
-### 游戏卡住不动
-
-可能是 LLM 响应慢或超时，检查：
-- 网络连接是否正常
-- API Key 是否有效
-- 模型服务是否可用
 
 ## 技术栈
 
@@ -405,25 +215,6 @@ python main.py
 - **数据验证**：Pydantic
 - **异步编程**：asyncio
 
-## 贡献指南
-
-欢迎贡献代码、报告问题或提出建议！
-
-1. Fork 本项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
-## 许可证
-
-本项目采用 MIT 许可证。详见 [LICENSE](LICENSE) 文件。
-
-## 致谢
-
-- [AgentScope](https://github.com/modelscope/agentscope) - 强大的多智能体框架
-- [阿里云 DashScope](https://dashscope.console.aliyun.com/) - 通义千问 API
-- 所有贡献者和支持者
 
 ---
 
