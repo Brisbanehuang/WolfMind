@@ -8,7 +8,7 @@
 [![AgentScope](https://img.shields.io/badge/AgentScope-0.1.0+-green.svg)](https://github.com/modelscope/agentscope)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[功能特性](#功能特性) • [快速开始](#快速开始) • [项目结构](#项目结构) • [配置说明](#配置说明) • [开发路线](#开发路线)
+[功能特性](#功能特性) • [快速开始](#快速开始) • [项目结构](#项目结构) • [游戏规则](#游戏规则)
 
 </div>
 
@@ -103,7 +103,7 @@ python main.py
 
 就这么简单！游戏将自动开始，你可以在终端看到 AI 智能体之间的对话和游戏进程。
 
-## 项目文件结构树
+## 项目结构
 
 ```
 werewolf-game/
