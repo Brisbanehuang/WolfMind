@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from agentscope.agent import ReActAgent
 from agentscope.message import Msg
 
+from prompts.role_prompts import RolePrompts
 from models.schemas import (
     BaseDecision,
     DiscussionModel,
@@ -56,6 +57,17 @@ class BaseRole(ABC):
     def kill(self) -> None:
         """标记角色死亡"""
         self.is_alive = False
+
+    def get_instruction(self) -> str:
+        """获取角色专属提示词"""
+        prompts = {
+            "werewolf": RolePrompts.werewolf_instruction,
+            "villager": RolePrompts.villager_instruction,
+            "seer": RolePrompts.seer_instruction,
+            "witch": RolePrompts.witch_instruction,
+            "hunter": RolePrompts.hunter_instruction,
+        }
+        return prompts.get(self.role_name, "")
 
     async def leave_last_words(self, prompt: Msg) -> Msg:
         """发表遗言"""
