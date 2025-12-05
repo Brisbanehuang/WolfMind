@@ -79,7 +79,7 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
     for agent, role_name in zip(agents, roles):
         # 创建角色对象
         role_obj = RoleFactory.create_role(agent, role_name)
-        
+
         # Tell the agent its role
         await agent.observe(
             await moderator(
@@ -90,9 +90,10 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
 
     # Printing the roles
     players.print_roles()
-    
+
     # 记录玩家列表到日志
-    players_info = [(name, role) for name, role in players.name_to_role.items()]
+    players_info = [(name, role)
+                    for name, role in players.name_to_role.items()]
     logger.log_players(players_info)
 
     # GAME BEGIN!
@@ -134,7 +135,12 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                         await moderator(""),
                     )
                     # 记录狼人讨论
-                    if res.content:
+                    speech = res.metadata.get("speech", "")
+                    behavior = res.metadata.get("behavior", "")
+                    if speech or behavior:
+                        log_content = f"[{behavior}] {speech}" if behavior else speech
+                        logger.log_message("狼人讨论", log_content, werewolf.name)
+                    elif res.content:
                         logger.log_message("狼人讨论", res.content, werewolf.name)
                     if _ % n_werewolves == 0 and res.metadata.get(
                         "reach_agreement",
@@ -153,13 +159,13 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                     target = msg.metadata.get("vote")
                     if target:
                         logger.log_vote(werewolf.name, target, "狼人投票")
-                
+
                 killed_player, votes = majority_vote(
                     [_.metadata.get("vote") for _ in msgs_vote],
                 )
                 # 记录狼人投票结果
                 logger.log_vote_result(killed_player, votes, "狼人投票结果")
-                
+
                 # Postpone the broadcast of voting
                 await werewolves_hub.broadcast(
                     [
@@ -180,14 +186,28 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                     "alive_players": players.current_alive,
                     "moderator": moderator,
                 }
-                
+
                 result = await witch.night_action(game_state)
-                
+
+                # Log resurrect speech
+                r_speech = result.get("resurrect_speech")
+                r_behavior = result.get("resurrect_behavior")
+                if r_speech or r_behavior:
+                    log_content = f"[{r_behavior}] {r_speech}" if r_behavior else r_speech
+                    logger.log_message("女巫行动(解药)", log_content, witch.name)
+
+                # Log poison speech
+                p_speech = result.get("poison_speech")
+                p_behavior = result.get("poison_behavior")
+                if p_speech or p_behavior:
+                    log_content = f"[{p_behavior}] {p_speech}" if p_behavior else p_speech
+                    logger.log_message("女巫行动(毒药)", log_content, witch.name)
+
                 # 处理解药
                 if result.get("resurrect"):
                     logger.log_action("女巫行动", f"使用解药救了 {killed_player}")
                     killed_player = None
-                
+
                 # 处理毒药
                 if result.get("poison"):
                     poisoned_player = result.get("poison")
@@ -203,14 +223,23 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                     "moderator": moderator,
                     "name_to_role": players.name_to_role,
                 }
-                
+
                 result = await seer.night_action(game_state)
+
+                # Log speech/behavior
+                speech = result.get("speech")
+                behavior = result.get("behavior")
+                if speech or behavior:
+                    log_content = f"[{behavior}] {speech}" if behavior else speech
+                    logger.log_message("预言家行动", log_content, seer.name)
+
                 # 记录预言家查验
                 if result and result.get("action") == "check":
                     checked_player = result.get("target")
                     role_result = result.get("result")
                     if checked_player and role_result:
-                        logger.log_action("预言家查验", f"查验 {checked_player}, 结果: {role_result}")
+                        logger.log_action(
+                            "预言家查验", f"查验 {checked_player}, 结果: {role_result}")
 
             # Hunter's turn
             for hunter in players.hunter:
@@ -221,7 +250,8 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 ):
                     shot_player = await hunter.shoot(players.current_alive, moderator)
                     if shot_player:
-                        logger.log_action("猎人开枪", f"猎人 {hunter.name} 开枪击杀了 {shot_player}")
+                        logger.log_action(
+                            "猎人开枪", f"猎人 {hunter.name} 开枪击杀了 {shot_player}")
 
             # Update alive players
             dead_tonight = [killed_player, poisoned_player, shot_player]
@@ -249,9 +279,17 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                     )
                     await alive_players_hub.broadcast(msg_moderator)
                     # Leave a message
-                    last_msg = await players.name_to_agent[killed_player]()
-                    if last_msg.content:
+                    role_obj = players.name_to_role_obj[killed_player]
+                    last_msg = await role_obj.leave_last_words(msg_moderator)
+
+                    speech = last_msg.metadata.get("speech", "")
+                    behavior = last_msg.metadata.get("behavior", "")
+                    if speech or behavior:
+                        log_content = f"[{behavior}] {speech}" if behavior else speech
+                        logger.log_last_words(killed_player, log_content)
+                    elif last_msg.content:
                         logger.log_last_words(killed_player, last_msg.content)
+
                     await alive_players_hub.broadcast(last_msg)
 
             else:
@@ -279,16 +317,23 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
             # Open the auto broadcast to enable discussion
             alive_players_hub.set_auto_broadcast(True)
             # 更新存活智能体列表
-            current_alive_agents = [role.agent for role in players.current_alive]
-            
+            current_alive_agents = [
+                role.agent for role in players.current_alive]
+
             # 使用 sequential_pipeline 进行讨论，并记录每个玩家的发言
             discussion_msgs = []
-            for agent in current_alive_agents:
-                msg = await agent()
+            for role in players.current_alive:
+                msg = await role.day_discussion(await moderator(""))
                 discussion_msgs.append(msg)
-                if msg.content:
-                    logger.log_message("白天讨论", msg.content, agent.name)
-            
+
+                speech = msg.metadata.get("speech", "")
+                behavior = msg.metadata.get("behavior", "")
+                if speech or behavior:
+                    log_content = f"[{behavior}] {speech}" if behavior else speech
+                    logger.log_message("白天讨论", log_content, role.name)
+                elif msg.content:
+                    logger.log_message("白天讨论", msg.content, role.name)
+
             # Disable auto broadcast to avoid leaking info
             alive_players_hub.set_auto_broadcast(False)
 
@@ -306,14 +351,14 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 target = msg.metadata.get("vote")
                 if target:
                     logger.log_vote(role.name, target, "投票")
-            
+
             voted_player, votes = majority_vote(
                 [_.metadata.get("vote") for _ in msgs_vote],
             )
             # 记录投票结果
             if voted_player:
                 logger.log_vote_result(voted_player, votes, "投票结果", "被投出")
-            
+
             # Broadcast the voting messages together to avoid influencing
             # each other
             voting_msgs = [
@@ -328,11 +373,17 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 prompt_msg = await moderator(
                     Prompts.to_dead_player.format(voted_player),
                 )
-                last_msg = await players.name_to_agent[voted_player](
-                    prompt_msg,
-                )
-                if last_msg.content:
+                role_obj = players.name_to_role_obj[voted_player]
+                last_msg = await role_obj.leave_last_words(prompt_msg)
+
+                speech = last_msg.metadata.get("speech", "")
+                behavior = last_msg.metadata.get("behavior", "")
+                if speech or behavior:
+                    log_content = f"[{behavior}] {speech}" if behavior else speech
+                    logger.log_last_words(voted_player, log_content)
+                elif last_msg.content:
                     logger.log_last_words(voted_player, last_msg.content)
+
                 voting_msgs.extend([prompt_msg, last_msg])
 
             await alive_players_hub.broadcast(voting_msgs)
@@ -343,7 +394,8 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 if voted_player == hunter.name:
                     shot_player = await hunter.shoot(players.current_alive, moderator)
                     if shot_player:
-                        logger.log_action("猎人开枪", f"猎人 {hunter.name} 开枪击杀了 {shot_player}")
+                        logger.log_action(
+                            "猎人开枪", f"猎人 {hunter.name} 开枪击杀了 {shot_player}")
                         await alive_players_hub.broadcast(
                             await moderator(
                                 Prompts.to_all_hunter_shoot.format(
@@ -376,6 +428,6 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
         agents=agents,
         msg=await moderator[Any, Any, Msg](Prompts.to_all_reflect),
     )
-    
+
     # 确保日志文件关闭
     logger.close()
