@@ -37,6 +37,11 @@ class Config:
     def dashscope_api_key(self) -> Optional[str]:
         """DashScope API Key"""
         return os.environ.get("DASHSCOPE_API_KEY")
+
+    @property
+    def dashscope_model_name(self) -> str:
+        """DashScope Model Name"""
+        return os.environ.get("DASHSCOPE_MODEL_NAME", "qwen2.5-32b-instruct")
     
     @property
     def openai_api_key(self) -> Optional[str]:

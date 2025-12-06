@@ -130,7 +130,7 @@ def get_official_agents(name: str) -> ReActAgent:
             sys_prompt=prompt.format(name=name),
             model=DashScopeChatModel(
                 api_key=config.dashscope_api_key,
-                model_name="qwen2.5-32b-instruct",
+                model_name=config.dashscope_model_name,
             ),
             formatter=DashScopeMultiAgentFormatter(),
         )
