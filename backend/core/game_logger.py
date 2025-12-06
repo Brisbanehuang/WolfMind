@@ -69,21 +69,28 @@ class GameLogger:
         with open(self.log_file, 'a', encoding='utf-8') as f:
             f.write("\n【白天阶段】\n\n")
 
-    def log_message(self, category: str, content: str, player_name: Optional[str] = None):
-        """记录游戏消息
+    CATEGORY_MAP = {
+        "狼人讨论": "🐺 狼人频道",
+        "狼人投票": "🗡️ 狼人投票",
+        "女巫行动": "💊 女巫行动",
+        "女巫行动(解药)": "💊 女巫行动",
+        "女巫行动(毒药)": "💊 女巫行动",
+        "预言家行动": "🔮 预言家行动",
+        "预言家查验": "🔮 预言家行动",
+        "猎人开枪": "🔫 猎人开枪",
+        "白天讨论": "🗣️ 公开发言",
+        "投票": "🗳️ 投票",
+        "遗言": "👻 遗言",
+        "公告": "📢 系统公告",
+        "夜晚死亡": "💀 夜晚死亡",
+        "白天死亡": "💀 白天死亡",
+        "投票结果": "📊 投票结果",
+        "狼人投票结果": "📊 狼人投票结果",
+    }
 
-        Args:
-            category: 消息类别（如：狼人讨论、狼人投票、白天讨论、投票等）
-            content: 消息内容
-            player_name: 玩家名称（可选）
-        """
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        with open(self.log_file, 'a', encoding='utf-8') as f:
-            if player_name:
-                f.write(
-                    f"[{timestamp}] [{category}] {player_name}: {content}\n")
-            else:
-                f.write(f"[{timestamp}] [{category}] {content}\n")
+    def _get_category_display(self, category: str) -> str:
+        """获取类别的显示名称（带图标）"""
+        return self.CATEGORY_MAP.get(category, f"📝 {category}")
 
     def log_message_detail(
         self,
@@ -92,91 +99,92 @@ class GameLogger:
         speech: Optional[str] = None,
         behavior: Optional[str] = None,
         thought: Optional[str] = None,
+        action: Optional[str] = None,
     ):
-        """记录包含思考/行为/发言的消息。"""
+        """记录包含思考/行为/发言/动作的消息。"""
         timestamp = datetime.now().strftime("%H:%M:%S")
+        cat_display = self._get_category_display(category)
+
+        # 构建标题行
+        header = f"[{timestamp}] {cat_display} | {player_name}"
+        if action:
+            header += f" -> {action}"
+
         with open(self.log_file, 'a', encoding='utf-8') as f:
+            f.write(f"{header}\n")
+
+            # 写入详细内容（带缩进）
             if thought:
-                f.write(
-                    f"[{timestamp}] [{category}-思考] {player_name}: {thought}\n")
-            if speech or behavior:
-                prefix = f"[{behavior}] " if behavior else ""
-                content = f"{prefix}{speech}" if speech else prefix.strip()
-                f.write(
-                    f"[{timestamp}] [{category}] {player_name}: {content}\n")
+                f.write(f"    (心声) {thought}\n")
+            if behavior:
+                f.write(f"    (表现) {behavior}\n")
+            if speech:
+                f.write(f"    (发言) {speech}\n")
 
-    def log_vote(self, voter: str, target: str, vote_type: str = "投票"):
-        """记录投票信息
+            f.write("\n")  # 增加空行以分隔条目
 
-        Args:
-            voter: 投票者
-            target: 被投票者
-            vote_type: 投票类型（投票/狼人投票）
-        """
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        with open(self.log_file, 'a', encoding='utf-8') as f:
-            f.write(f"[{timestamp}] [{vote_type}] {voter} 投票给 {target}\n")
+    def log_vote(
+        self,
+        voter: str,
+        target: str,
+        vote_type: str = "投票",
+        speech: Optional[str] = None,
+        behavior: Optional[str] = None,
+        thought: Optional[str] = None
+    ):
+        """记录投票信息（支持详细信息）"""
+        action = f"投票给 {target}"
+        self.log_message_detail(
+            category=vote_type,
+            player_name=voter,
+            speech=speech,
+            behavior=behavior,
+            thought=thought,
+            action=action
+        )
 
     def log_vote_result(self, result: str, votes_detail: str, vote_type: str = "投票结果", action: str = "被选中击杀"):
-        """记录投票结果
-
-        Args:
-            result: 投票结果（被选中的玩家）
-            votes_detail: 投票详情
-            vote_type: 投票类型（投票结果/狼人投票结果）
-            action: 行动描述（被选中击杀/被投出）
-        """
+        """记录投票结果"""
         timestamp = datetime.now().strftime("%H:%M:%S")
+        cat_display = self._get_category_display(vote_type)
+
         with open(self.log_file, 'a', encoding='utf-8') as f:
+            f.write("-" * 80 + "\n")
             f.write(
-                f"[{timestamp}] [{vote_type}] {result} {action} (票数: {votes_detail})\n\n")
+                f"[{timestamp}] {cat_display} {result} {action} ({votes_detail})\n")
+            f.write("-" * 80 + "\n\n")
 
     def log_action(self, action_type: str, content: str):
-        """记录特殊行动
-
-        Args:
-            action_type: 行动类型（如：女巫行动、预言家查验、猎人开枪等）
-            content: 行动内容
-        """
+        """记录特殊行动（简略版，用于纯动作记录）"""
+        # 如果需要详细版，应使用 log_message_detail 并传入 action
         timestamp = datetime.now().strftime("%H:%M:%S")
+        cat_display = self._get_category_display(action_type)
         with open(self.log_file, 'a', encoding='utf-8') as f:
-            f.write(f"[{timestamp}] [{action_type}] {content}\n\n")
+            f.write(f"[{timestamp}] {cat_display} {content}\n\n")
 
     def log_death(self, phase: str, players: list[str]):
-        """记录死亡信息
-
-        Args:
-            phase: 阶段（夜晚死亡/白天死亡）
-            players: 死亡玩家列表
-        """
+        """记录死亡信息"""
         timestamp = datetime.now().strftime("%H:%M:%S")
+        cat_display = self._get_category_display(phase)
         with open(self.log_file, 'a', encoding='utf-8') as f:
             if players:
                 death_list = ", ".join(players)
-                f.write(f"[{timestamp}] [{phase}] {death_list}\n\n")
+                f.write(f"[{timestamp}] {cat_display} {death_list}\n\n")
             else:
-                f.write(f"[{timestamp}] [{phase}] 无\n\n")
+                f.write(f"[{timestamp}] {cat_display} 无\n\n")
 
     def log_announcement(self, content: str):
-        """记录公告信息
-
-        Args:
-            content: 公告内容
-        """
+        """记录公告信息"""
         timestamp = datetime.now().strftime("%H:%M:%S")
+        cat_display = self._get_category_display("公告")
         with open(self.log_file, 'a', encoding='utf-8') as f:
-            f.write(f"[{timestamp}] [公告] {content}\n\n")
+            f.write(f"[{timestamp}] {cat_display}\n    {content}\n\n")
 
     def log_last_words(self, player_name: str, content: str):
-        """记录遗言
-
-        Args:
-            player_name: 玩家名称
-            content: 遗言内容
-        """
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        with open(self.log_file, 'a', encoding='utf-8') as f:
-            f.write(f"[{timestamp}] [遗言] {player_name}: {content}\n\n")
+        """记录遗言"""
+        # 遗言通常包含 speech，建议使用 log_message_detail
+        # 这里保留是为了兼容旧调用，但重定向到新格式
+        self.log_message_detail("遗言", player_name, speech=content)
 
     def log_reflection(
         self,
@@ -190,13 +198,11 @@ class GameLogger:
         impression_str = ", ".join([
             f"{name}:{imp}" for name, imp in impressions.items()
         ]) if impressions else "(无更新)"
+
         with open(self.log_file, 'a', encoding='utf-8') as f:
-            f.write(
-                f"[{timestamp}] [第{round_num}回合-反思] {player_name} thought: {thought}\n"
-            )
-            f.write(
-                f"[{timestamp}] [第{round_num}回合-印象] {player_name} -> {impression_str}\n\n"
-            )
+            f.write(f"[{timestamp}] [第{round_num}回合-反思] {player_name}\n")
+            f.write(f"    (思考) {thought}\n")
+            f.write(f"    (印象) {impression_str}\n\n")
 
     def close(self):
         """关闭日志文件"""

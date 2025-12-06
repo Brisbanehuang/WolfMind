@@ -321,14 +321,23 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                     # 记录狼人投票
                     target = msg.metadata.get("vote")
                     if target:
-                        logger.log_vote(werewolf.name, target, "狼人投票")
-                    logger.log_message_detail(
-                        "狼人投票",
-                        werewolf.name,
-                        speech=speech or content_raw,
-                        behavior=behavior,
-                        thought=thought,
-                    )
+                        logger.log_vote(
+                            werewolf.name,
+                            target,
+                            "狼人投票",
+                            speech=speech or content_raw,
+                            behavior=behavior,
+                            thought=thought
+                        )
+                    else:
+                        logger.log_message_detail(
+                            "狼人投票",
+                            werewolf.name,
+                            speech=speech or content_raw,
+                            behavior=behavior,
+                            thought=thought,
+                            action="弃票"
+                        )
 
                 killed_player, votes = majority_vote(
                     [_.metadata.get("vote") for _ in msgs_vote],
@@ -611,7 +620,14 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 # 记录投票
                 target = msg.metadata.get("vote")
                 if target:
-                    logger.log_vote(role.name, target, "投票")
+                    logger.log_vote(
+                        role.name,
+                        target,
+                        "投票",
+                        speech=speech or content_raw,
+                        behavior=behavior,
+                        thought=thought
+                    )
                     public_vote_history.append(
                         {
                             "round": round_num,
@@ -620,14 +636,15 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                             "target": target,
                         },
                     )
-                # 记录投票前的思考与发言
-                logger.log_message_detail(
-                    "投票思考",
-                    role.name,
-                    speech=speech or content_raw,
-                    behavior=behavior,
-                    thought=thought,
-                )
+                else:
+                    logger.log_message_detail(
+                        "投票",
+                        role.name,
+                        speech=speech or content_raw,
+                        behavior=behavior,
+                        thought=thought,
+                        action="弃票"
+                    )
 
             voted_player, votes = majority_vote(
                 [_.metadata.get("vote") for _ in msgs_vote],
