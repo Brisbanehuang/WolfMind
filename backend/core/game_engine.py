@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=too-many-branches, too-many-statements, no-name-in-module
 """基于 agentscope 实现的狼人杀游戏。"""
+import re
 from typing import Any
 from datetime import datetime
 from agentscope.message._message_base import Msg
@@ -112,15 +113,17 @@ def _extract_msg_fields(msg: Msg) -> tuple[str, str, str, str]:
             val = " ".join(items)
         elif isinstance(val, dict) and "text" in val:
             val = val.get("text", "")
-        val = str(val)
-        # 去除 generate_response("...") 包裹
-        if val.startswith("generate_response(") and val.endswith(")"):
-            inner = val[len("generate_response("):-1].strip()
-            if (inner.startswith("\"") and inner.endswith("\"")) or (
-                inner.startswith("'") and inner.endswith("'")
-            ):
-                inner = inner[1:-1]
-            val = inner
+        val = str(val).strip()
+        # 去除 generate_response("...") 包裹，即使前后有前缀/空格
+        match = re.search(
+            r"generate_response\(\s*[\"']?(.*?)[\"']?\s*\)\s*$", val)
+        if match:
+            val = match.group(1)
+        else:
+            inline = re.search(
+                r"generate_response\(\s*[\"']?(.*?)[\"']?\s*\)", val)
+            if inline:
+                val = inline.group(1)
         return val
 
     speech_s = _clean_text(speech)
