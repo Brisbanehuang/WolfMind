@@ -28,11 +28,19 @@ class EnglishPrompts:
         "agreement during the discussion."
     )
 
-    to_wolves_vote = "[WEREWOLVES ONLY] Which player do you vote to kill?"
+    to_wolves_vote = (
+        "[WEREWOLVES ONLY] Which player do you vote to kill? "
+        "You must choose one target."
+    )
 
     to_wolves_res = (
         "[WEREWOLVES ONLY] The voting result is {}. So you have chosen to "
         "eliminate {}."
+    )
+
+    to_wolves_res_abstain = (
+        "[WEREWOLVES ONLY] The voting result is {}. No one will be eliminated "
+        "tonight (invalid/no selection)."
     )
 
     to_all_witch_turn = (
@@ -101,10 +109,16 @@ class EnglishPrompts:
 
     to_all_vote = (
         "Now the discussion is over. Everyone, please vote to eliminate one "
-        "player from the alive players: {}."
+        "player from the alive players: {}. If you want to abstain, reply "
+        "'abstain' instead."
     )
 
     to_all_res = "The voting result is {}. So {} has been voted out."
+
+    to_all_res_abstain = (
+        "The voting result is {}. No one is eliminated this round "
+        "(abstain/invalid votes)."
+    )
 
     to_all_wolf_win = (
         "There are {n_alive} players alive, and {n_werewolves} of them are "
@@ -142,7 +156,7 @@ class ChinesePrompts:
         "如果达成一致，请将 `reach_agreement` 设为 True。"
     )
 
-    to_wolves_vote = "[仅狼人可见] 你投票要杀死哪位玩家？"
+    to_wolves_vote = "[仅狼人可见] 你投票要杀死哪位玩家？必须选择一名目标。"
 
     to_wolves_res = "[仅狼人可见] 投票结果为 {}，你们选择淘汰 {}。"
 
@@ -174,9 +188,13 @@ class ChinesePrompts:
 
     to_all_discuss = "现在存活玩家有：{names}。游戏继续，大家开始讨论并投票淘汰一名玩家。请按顺序（{names}）依次发言。"
 
-    to_all_vote = "讨论结束。请大家从存活玩家中投票淘汰一人：{}。"
+    to_all_vote = "讨论结束。请大家从存活玩家中投票淘汰一人：{}。如要弃权，请回复“弃权”或留空。"
 
     to_all_res = "投票结果为 {}，{} 被淘汰。"
+
+    to_wolves_res_abstain = "[仅狼人可见] 投票结果为 {}，本轮无人被淘汰（无效/未选择）。"
+
+    to_all_res_abstain = "投票结果为 {}，本轮无人被淘汰（弃权/无效票占多数）。"
 
     to_all_wolf_win = (
         "当前存活玩家共{n_alive}人，其中{n_werewolves}人为狼人。"

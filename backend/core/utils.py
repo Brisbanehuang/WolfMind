@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 """Utility functions for the werewolf game."""
-from collections import defaultdict
+from collections import Counter, defaultdict
 from typing import Any
-
-import numpy as np
 
 from config import config
 from prompts import EnglishPrompts, ChinesePrompts
@@ -18,14 +16,53 @@ MAX_DISCUSSION_ROUND = config.max_discussion_round  # 白天讨论阶段的最�
 # 根据配置选择提示词语言
 Prompts = ChinesePrompts if config.game_language == "zh" else EnglishPrompts
 
+ABSTAIN_KEYWORDS = {
+    "abstain",
+    "弃权",
+    "skip",
+    "pass",
+    "no vote",
+    "novote",
+    "none",
+    "",
+}
 
-def majority_vote(votes: list[str]) -> tuple:
-    """Return the vote with the most counts."""
-    result = max(set(votes), key=votes.count)
-    names, counts = np.unique(votes, return_counts=True)
-    conditions = ", ".join(
-        [f"{name}: {count}" for name, count in zip(names, counts)],
-    )
+
+def is_abstain_vote(vote: Any) -> bool:
+    """Determine whether a vote indicates abstention/invalid."""
+
+    if vote is None:
+        return True
+
+    vote_str = str(vote).strip()
+    return vote_str.lower() in ABSTAIN_KEYWORDS
+
+
+def majority_vote(votes: list[str | None]) -> tuple[str | None, str]:
+    """Return the vote with the most counts, ignoring abstentions/invalid."""
+
+    if not votes:
+        return None, "无人投票"
+
+    counter: Counter[str] = Counter()
+    abstain_count = 0
+
+    for vote in votes:
+        if is_abstain_vote(vote):
+            abstain_count += 1
+            continue
+        vote_str = str(vote).strip()
+        counter[vote_str] += 1
+
+    parts = [f"{name}: {count}" for name, count in counter.items()]
+    if abstain_count:
+        parts.append(f"弃权/无效: {abstain_count}")
+    conditions = ", ".join(parts) if parts else "全员弃权/无效票"
+
+    if not counter:
+        return None, conditions
+
+    result = max(counter, key=counter.get)
     return result, conditions
 
 

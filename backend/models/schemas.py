@@ -44,15 +44,34 @@ class DiscussionModel(BaseDecision):
     )
 
 
-def get_vote_model(agents: list[AgentBase]) -> type[BaseModel]:
-    """根据玩家名字生成投票模型。"""
+def get_vote_model(
+    agents: list[AgentBase],
+    allow_abstain: bool = True,
+) -> type[BaseModel]:
+    """根据玩家名字生成投票模型。
+
+    Args:
+        agents: 存活玩家列表
+        allow_abstain: 是否允许弃权/留空
+    """
+
+    VoteLiteral = Literal[tuple(_.name for _ in agents)]  # type: ignore
+    AbstainLiteral = Literal["abstain", "弃权"]
 
     class VoteModel(BaseDecision):
         """投票阶段的输出模型。"""
 
-        vote: Literal[tuple(_.name for _ in agents)] = Field(  # type: ignore
-            description="你想投票的玩家名字",
-        )
+        if allow_abstain:
+            vote: VoteLiteral | AbstainLiteral | None = Field(  # type: ignore
+                description=(
+                    "你想投票的玩家名字；如果选择弃权，请返回 'abstain'、'弃权' 或留空"
+                ),
+                default=None,
+            )
+        else:
+            vote: VoteLiteral = Field(  # type: ignore
+                description="你想投票的玩家名字，必须选择一名玩家",
+            )
 
     return VoteModel
 

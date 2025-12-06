@@ -15,6 +15,7 @@ from core.utils import (
     MAX_GAME_ROUND,
     MAX_DISCUSSION_ROUND,
     Players,
+    is_abstain_vote,
     Prompts,
 )
 from core.game_logger import GameLogger
@@ -305,6 +306,7 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 werewolves_hub.set_auto_broadcast(False)
                 vote_prompt = await moderator(content=Prompts.to_wolves_vote)
                 msgs_vote = []
+                wolf_votes_for_majority: list[str | None] = []
                 for werewolf in players.werewolves:
                     context = _format_impression_context(
                         werewolf.name,
@@ -321,12 +323,15 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                     msgs_vote.append(msg)
                     speech, behavior, thought, content_raw = _extract_msg_fields(
                         msg)
-                    # 记录狼人投票
-                    target = msg.metadata.get("vote")
-                    if target:
+                    # 记录狼人投票（狼必选目标，不允许弃权）
+                    raw_vote = msg.metadata.get("vote")
+                    vote_value = str(raw_vote).strip() if raw_vote else None
+                    wolf_votes_for_majority.append(vote_value)
+
+                    if vote_value:
                         logger.log_vote(
                             werewolf.name,
-                            target,
+                            vote_value,
                             "狼人投票",
                             speech=speech or content_raw,
                             behavior=behavior,
@@ -339,22 +344,28 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                             speech=speech or content_raw,
                             behavior=behavior,
                             thought=thought,
-                            action="弃票"
+                            action="未选择目标(应当必选)"
                         )
 
-                killed_player, votes = majority_vote(
-                    [_.metadata.get("vote") for _ in msgs_vote],
-                )
+                killed_player, votes = majority_vote(wolf_votes_for_majority)
                 # 记录狼人投票结果
-                logger.log_vote_result(killed_player, votes, "狼人投票结果")
+                logger.log_vote_result(
+                    killed_player or "无人出局",
+                    votes,
+                    "狼人投票结果",
+                    "被选中击杀" if killed_player else "无人被击杀",
+                )
 
                 # 推迟投票结果的广播
+                wolves_res_prompt = (
+                    Prompts.to_wolves_res.format(votes, killed_player)
+                    if killed_player
+                    else Prompts.to_wolves_res_abstain.format(votes)
+                )
                 await werewolves_hub.broadcast(
                     [
                         *msgs_vote,
-                        await moderator(
-                            Prompts.to_wolves_res.format(votes, killed_player),
-                        ),
+                        await moderator(wolves_res_prompt),
                     ],
                 )
 
@@ -604,6 +615,7 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 ),
             )
             msgs_vote = []
+            day_votes_for_majority: list[str | None] = []
             for role in players.current_alive:
                 context = _format_impression_context(
                     role.name,
@@ -621,11 +633,15 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 speech, behavior, thought, content_raw = _extract_msg_fields(
                     msg)
                 # 记录投票
-                target = msg.metadata.get("vote")
-                if target:
+                raw_vote = msg.metadata.get("vote")
+                abstained = is_abstain_vote(raw_vote)
+                vote_value = None if abstained else str(raw_vote).strip()
+                day_votes_for_majority.append(vote_value)
+
+                if vote_value:
                     logger.log_vote(
                         role.name,
-                        target,
+                        vote_value,
                         "投票",
                         speech=speech or content_raw,
                         behavior=behavior,
@@ -636,7 +652,7 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                             "round": round_num,
                             "phase": "白天",
                             "voter": role.name,
-                            "target": target,
+                            "target": vote_value,
                         },
                     )
                 else:
@@ -649,19 +665,22 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                         action="弃票"
                     )
 
-            voted_player, votes = majority_vote(
-                [_.metadata.get("vote") for _ in msgs_vote],
-            )
+            voted_player, votes = majority_vote(day_votes_for_majority)
             # 记录投票结果
             if voted_player:
                 logger.log_vote_result(voted_player, votes, "投票结果", "被投出")
+            else:
+                logger.log_vote_result("无人出局", votes, "投票结果", "无人被投出")
 
             # 一起广播投票消息以避免相互影响
+            voting_res_prompt = (
+                Prompts.to_all_res.format(votes, voted_player)
+                if voted_player
+                else Prompts.to_all_res_abstain.format(votes)
+            )
             voting_msgs = [
                 *msgs_vote,
-                await moderator(
-                    Prompts.to_all_res.format(votes, voted_player),
-                ),
+                await moderator(voting_res_prompt),
             ]
 
             # 如果被投出，发表遗言

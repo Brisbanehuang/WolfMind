@@ -120,7 +120,7 @@ class Werewolf(BaseRole):
                 prompt.name, f"{prompt.content}\n\n{context}", role=prompt.role)
         return await self.agent(
             prompt,
-            structured_model=get_vote_model(alive_players),
+            structured_model=get_vote_model(alive_players, allow_abstain=False),
         )
 
 
