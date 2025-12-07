@@ -77,12 +77,7 @@ class Config:
         return self._get("MODEL_PROVIDER", "dashscope").lower()
 
     # ==================== 游戏配置 ====================
-
-    @property
-    def game_language(self) -> str:
-        """游戏语言: zh, en"""
-        return self._get("GAME_LANGUAGE", "zh").lower()
-
+    
     @property
     def max_game_round(self) -> int:
         """最大游戏轮数"""
