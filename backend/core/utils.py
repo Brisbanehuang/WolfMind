@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Utility functions for the werewolf game."""
+"""狼人杀游戏的工具函数集合。"""
 from collections import Counter, defaultdict
 from typing import Any
 
@@ -29,7 +29,7 @@ ABSTAIN_KEYWORDS = {
 
 
 def is_abstain_vote(vote: Any) -> bool:
-    """Determine whether a vote indicates abstention/invalid."""
+    """判断投票是否为弃权/无效。"""
 
     if vote is None:
         return True
@@ -39,7 +39,7 @@ def is_abstain_vote(vote: Any) -> bool:
 
 
 def majority_vote(votes: list[str | None]) -> tuple[str | None, str]:
-    """Return the vote with the most counts, ignoring abstentions/invalid."""
+    """在剔除弃权/无效票后返回最高票玩家及计票详情。"""
 
     if not votes:
         return None, "无人投票"
@@ -67,7 +67,7 @@ def majority_vote(votes: list[str | None]) -> tuple[str | None, str]:
 
 
 def names_to_str(agents: list[str] | list[ReActAgent] | list) -> str:
-    """Return a string of agent names.
+    """将玩家/角色列表转换为名字字符串。
 
     Args:
         agents: 可以是字符串列表、智能体列表或角色对象列表
@@ -101,14 +101,14 @@ def names_to_str(agents: list[str] | list[ReActAgent] | list) -> str:
 
 
 class EchoAgent(AgentBase):
-    """Echo agent that repeats the input message."""
+    """复读主持人代理，直接返回收到的消息。"""
 
     def __init__(self) -> None:
         super().__init__()
         self.name = "Moderator"
 
     async def reply(self, content: str) -> Msg:
-        """Repeat the input content with its name and role."""
+        """将收到的内容原样返回。"""
         msg = Msg(
             self.name,
             content,
@@ -122,17 +122,17 @@ class EchoAgent(AgentBase):
         *args: Any,
         **kwargs: Any,
     ) -> Msg:
-        """Handle interrupt."""
+        """处理打断（占位，无额外逻辑）。"""
 
     async def observe(self, msg: Msg | list[Msg] | None) -> None:
-        """Observe the user's message."""
+        """观察消息（占位，无额外逻辑）。"""
 
 
 class Players:
-    """Maintain the players' status."""
+    """维护玩家状态的容器。"""
 
     def __init__(self) -> None:
-        """Initialize the players."""
+        """初始化玩家管理结构。"""
         # The mapping from player name to role
         self.name_to_role = {}  # 玩家名称到角色字符串的映射
         self.role_to_names = defaultdict(list)  # 角色到玩家名称列表的映射
@@ -150,15 +150,13 @@ class Players:
         self.knowledge = {}  # 玩家持久化的游戏理解: {player: knowledge_text}
 
     def add_player(self, player: ReActAgent, role: str, role_obj=None, knowledge: str | None = None) -> None:
-        """Add a player to the game.
+        """将一名玩家加入游戏。
 
         Args:
-            player (`ReActAgent`):
-                The player to be added.
-            role (`str`):
-                The role of the player.
-            role_obj:
-                The role object instance (新增参数)
+            player (`ReActAgent`): 要加入的智能体
+            role (`str`): 该玩家的角色名
+            role_obj: 角色对象实例（可选）
+            knowledge: 该玩家的长期知识文本（可选）
         """
         self.name_to_role[player.name] = role
         self.name_to_agent[player.name] = player
@@ -194,24 +192,19 @@ class Players:
         self.current_alive.append(role_obj if role_obj else player)
 
     def get_knowledge(self, player_name: str) -> str:
-        """Return a player's long-term understanding text."""
+        """返回指定玩家的长期游戏理解文本。"""
         return self.knowledge.get(player_name, "")
 
     def update_knowledge(self, player_name: str, knowledge: str) -> None:
-        """Update knowledge for a given player."""
+        """更新某个玩家的长期游戏理解文本。"""
         self.knowledge[player_name] = knowledge or ""
 
     def export_all_knowledge(self) -> dict[str, str]:
-        """Return shallow copy of all knowledge entries."""
+        """返回所有玩家知识条目的浅拷贝。"""
         return dict(self.knowledge)
 
     def update_players(self, dead_players: list[str]) -> None:
-        """Update the current alive players.
-
-        Args:
-            dead_players (`list[str]`):
-                A list of dead player names to be removed.
-        """
+        """根据死亡名单更新存活玩家列表。"""
         # 标记角色对象为死亡
         for name in dead_players:
             if name and name in self.name_to_role_obj:
@@ -232,7 +225,7 @@ class Players:
         ]
 
     def get_impressions(self, player_name: str, alive_only: bool = True) -> dict[str, str]:
-        """Get the impression map for a player.
+        """获取指定玩家的印象映射。
 
         Args:
             player_name: 玩家名称
@@ -248,7 +241,7 @@ class Players:
         return impression_map
 
     def apply_impression_updates(self, player_name: str, updates: dict[str, str]) -> None:
-        """Apply impression updates for a player.
+        """为指定玩家应用印象更新。
 
         Args:
             player_name: 更新人
@@ -261,13 +254,13 @@ class Players:
         self.impressions[player_name].update(updates)
 
     def print_roles(self) -> None:
-        """Print the roles of all players."""
+        """打印所有玩家的角色信息。"""
         print("Roles:")
         for name, role in self.name_to_role.items():
             print(f" - {name}: {role}")
 
     def check_winning(self) -> str | None:
-        """Check if the game is over and return the winning message."""
+        """检查胜负条件，满足则返回胜利文案。"""
 
         # Prepare true roles string
         true_roles = (

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Lightweight per-player knowledge checkpoint management."""
+"""轻量级的玩家长期知识检查点管理。"""
 from __future__ import annotations
 
 import json
@@ -9,12 +9,11 @@ from typing import Dict
 
 
 class PlayerKnowledgeStore:
-    """Manage long-lived game understanding for each player.
+    """管理每位玩家的长期游戏理解。
 
-    A fresh, uniquely named checkpoint file is created on each program start
-    to ensure the first game of a run always begins with an empty knowledge
-    base. Knowledge is stored per player and is intentionally limited to
-    long-term understanding/experience (no per-game speeches or votes).
+    每次程序启动都会创建一个全新的、带时间戳的检查点文件，保证首局游戏
+    从空白知识库开始。知识只保存可跨局复用的经验/理解，不包含任何一局
+    的具体发言或投票细节。
     """
 
     def __init__(self, checkpoint_dir: str, base_filename: str) -> None:
@@ -25,17 +24,17 @@ class PlayerKnowledgeStore:
         self.session_id = f"{base_filename}_{timestamp}"
         self.file_path = self.dir_path / f"{self.session_id}.json"
 
-        # Keep everything in memory and mirror to disk on save.
+        # 以内存为主，保存时镜像到磁盘。
         self._data: Dict[str, object] = {
             "session_id": self.session_id,
             "created_at": datetime.now().isoformat(),
             "players": {},
         }
-        # Create the empty, unique file for this run.
+        # 为当前运行创建一个独立的空文件。
         self.save()
 
     def load(self) -> Dict[str, object]:
-        """Load knowledge from disk (if the file already has content)."""
+        """从磁盘读取知识（若文件已有内容则覆盖到内存）。"""
         if self.file_path.exists():
             raw = self.file_path.read_text(encoding="utf-8")
             if raw.strip():
@@ -47,13 +46,13 @@ class PlayerKnowledgeStore:
         return self._data
 
     def get_player_knowledge(self, name: str) -> str:
-        """Return stored knowledge for a player (empty string if none)."""
+        """返回指定玩家的知识文本，无则返回空字符串。"""
         players = self._data.get("players", {}) if isinstance(
             self._data, dict) else {}
         return str(players.get(name, "")) if isinstance(players, dict) else ""
 
     def update_player_knowledge(self, name: str, knowledge: str) -> None:
-        """Update the knowledge text for a player (in-memory only)."""
+        """更新某个玩家的知识文本（仅更新内存）。"""
         if not isinstance(self._data, dict):
             self._data = {"session_id": self.session_id, "players": {}}
         players = self._data.setdefault(
@@ -62,22 +61,22 @@ class PlayerKnowledgeStore:
             players[name] = knowledge or ""
 
     def bulk_update(self, knowledge_map: Dict[str, str]) -> None:
-        """Replace or merge multiple player knowledge entries."""
+        """批量替换或合并多名玩家的知识条目。"""
         for name, knowledge in knowledge_map.items():
             self.update_player_knowledge(name, knowledge)
 
     def export_players(self) -> Dict[str, str]:
-        """Return a shallow copy of the player knowledge mapping."""
+        """返回玩家知识映射的浅拷贝。"""
         players = self._data.get("players", {}) if isinstance(
             self._data, dict) else {}
         return dict(players) if isinstance(players, dict) else {}
 
     def save(self) -> None:
-        """Persist current knowledge to disk as JSON."""
+        """将当前知识持久化为 JSON 写入磁盘。"""
         serialized = json.dumps(self._data, ensure_ascii=False, indent=2)
         self.file_path.write_text(serialized, encoding="utf-8")
 
     @property
     def path(self) -> str:
-        """Return the checkpoint file path as string."""
+        """返回检查点文件路径字符串。"""
         return str(self.file_path)
