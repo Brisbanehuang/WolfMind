@@ -4,6 +4,7 @@ import asyncio
 import sys
 
 from core.game_engine import werewolves_game
+from core.knowledge_base import PlayerKnowledgeStore
 from config import config
 
 from agentscope.agent import ReActAgent
@@ -189,6 +190,13 @@ async def main() -> None:
     players = [get_official_agents(f"Player{_ + 1}") for _ in range(9)]
     print("✓ 玩家创建完成\n")
 
+    # 初始化玩家知识库（每次启动都会创建新的空文件）
+    knowledge_store = PlayerKnowledgeStore(
+        checkpoint_dir=config.checkpoint_dir,
+        base_filename=config.checkpoint_id,
+    )
+    print(f"✓ 知识库已创建: {knowledge_store.path}")
+
     # 提示：也可以在此替换为自定义的全部代理
 
     # 从已有检查点加载状态
@@ -204,7 +212,7 @@ async def main() -> None:
     print("🎮 游戏开始！")
     print("=" * 50 + "\n")
 
-    await werewolves_game(players)
+    await werewolves_game(players, knowledge_store=knowledge_store)
 
     # 将最新状态保存到检查点
     print(f"\n正在保存检查点: {config.checkpoint_dir}/{config.checkpoint_id}.json")

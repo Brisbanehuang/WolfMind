@@ -36,6 +36,20 @@ class ReflectionModel(BaseModel):
     )
 
 
+class KnowledgeUpdateModel(BaseModel):
+    """每轮结束后用于更新长期游戏理解的模型。"""
+
+    thought: str = Field(
+        description="整理你这一轮的收获与推理。不会被其他玩家看到。",
+    )
+    knowledge: str = Field(
+        description=(
+            "请用简洁的一段话更新你对狼人杀的长期理解/经验，用于未来的决策。"
+            "聚焦可复用的策略、识别模式、合作或欺诈信号，避免包含本局具体的发言/票型原文。"
+        ),
+    )
+
+
 class DiscussionModel(BaseDecision):
     """讨论阶段的输出模型。"""
 

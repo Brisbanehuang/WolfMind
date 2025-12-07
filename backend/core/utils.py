@@ -147,8 +147,9 @@ class Players:
         self.all_players = []  # 所有智能体列表
         self.all_roles = []  # 所有角色对象列表 (新增)
         self.impressions = {}  # 玩家对其他玩家的印象映射: {player: {other: impression}}
+        self.knowledge = {}  # 玩家持久化的游戏理解: {player: knowledge_text}
 
-    def add_player(self, player: ReActAgent, role: str, role_obj=None) -> None:
+    def add_player(self, player: ReActAgent, role: str, role_obj=None, knowledge: str | None = None) -> None:
         """Add a player to the game.
 
         Args:
@@ -171,6 +172,9 @@ class Players:
             name: "不熟悉" for name in self.name_to_agent.keys() if name != player.name
         }
 
+        # 初始化知识库文本
+        self.knowledge[player.name] = knowledge or ""
+
         if role_obj:
             self.name_to_role_obj[player.name] = role_obj
             self.all_roles.append(role_obj)
@@ -188,6 +192,18 @@ class Players:
         else:
             raise ValueError(f"Unknown role: {role}")
         self.current_alive.append(role_obj if role_obj else player)
+
+    def get_knowledge(self, player_name: str) -> str:
+        """Return a player's long-term understanding text."""
+        return self.knowledge.get(player_name, "")
+
+    def update_knowledge(self, player_name: str, knowledge: str) -> None:
+        """Update knowledge for a given player."""
+        self.knowledge[player_name] = knowledge or ""
+
+    def export_all_knowledge(self) -> dict[str, str]:
+        """Return shallow copy of all knowledge entries."""
+        return dict(self.knowledge)
 
     def update_players(self, dead_players: list[str]) -> None:
         """Update the current alive players.

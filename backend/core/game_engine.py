@@ -18,11 +18,13 @@ from core.utils import (
     is_abstain_vote,
     Prompts,
 )
+from core.knowledge_base import PlayerKnowledgeStore
 from core.game_logger import GameLogger
 from models.schemas import (
     DiscussionModel,
     get_vote_model,
     ReflectionModel,
+    KnowledgeUpdateModel,
 )
 from models.roles import (
     RoleFactory,
@@ -34,11 +36,7 @@ from models.roles import (
 )
 
 from agentscope.agent import ReActAgent
-from agentscope.pipeline import (
-    MsgHub,
-    sequential_pipeline,
-    fanout_pipeline,
-)
+from agentscope.pipeline import MsgHub
 
 
 moderator = EchoAgent()
@@ -68,10 +66,14 @@ def _format_impression_context(
         if seg:
             record_lines.append(seg)
 
+    knowledge = players.get_knowledge(player_name)
+
     parts = [
         f"当前轮次: 第{round_num}轮 ({phase})",
         "你的对其他存活玩家的印象:",
         "\n".join(impression_lines) if impression_lines else "(暂无)",
+        "你的长期游戏理解/经验 (跨局持久):",
+        knowledge or "(目前为空)",
         "本轮公开发言与动作:",
         "\n".join(record_lines) if record_lines else "(当前尚无公开发言)",
         "注意: 你的思考过程 thought 不会被其他玩家看到。",
@@ -132,6 +134,7 @@ async def _reflection_phase(
     round_num: int,
     moderator_agent: EchoAgent,
     logger: GameLogger,
+    knowledge_store: PlayerKnowledgeStore,
 ) -> None:
     """让每位存活玩家在回合结束后更新印象。"""
 
@@ -162,8 +165,27 @@ async def _reflection_phase(
             players.get_impressions(role.name, alive_only=True),
         )
 
+        # 让玩家更新跨局的长期理解，并写入知识库
+        knowledge_prompt = await moderator_agent(
+            f"[{role.name} ONLY] 在不泄露本局具体发言/投票细节的前提下，总结可复用的游戏理解。"
+            "输出到 knowledge 字段，它会被保存为你的专属经验库并在未来行动时提供给你。",
+        )
+        msg_knowledge = await role.agent(
+            _attach_context(knowledge_prompt, context),
+            structured_model=KnowledgeUpdateModel,
+        )
+        knowledge_text = msg_knowledge.metadata.get("knowledge", "")
+        players.update_knowledge(role.name, knowledge_text)
+        knowledge_store.update_player_knowledge(role.name, knowledge_text)
 
-async def werewolves_game(agents: list[ReActAgent]) -> None:
+        # 持久化最新知识以便异常时不丢失
+        knowledge_store.save()
+
+
+async def werewolves_game(
+    agents: list[ReActAgent],
+    knowledge_store: PlayerKnowledgeStore | None = None,
+) -> None:
     """狼人杀游戏的主入口
 
     Args:
@@ -171,6 +193,13 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
             9个智能体的列表。
     """
     assert len(agents) == 9, "The werewolf game needs exactly 9 players."
+
+    # 知识库初始化：首次加载，以确保后续回合/局可以复用经验
+    knowledge_store = knowledge_store or PlayerKnowledgeStore(
+        checkpoint_dir=config.checkpoint_dir,
+        base_filename=config.checkpoint_id,
+    )
+    knowledge_store.load()
 
     # 初始化游戏日志
     game_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -216,7 +245,9 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 await moderator(f"[{agent.name} ONLY] {instruction}")
             )
 
-        players.add_player(agent, role_name, role_obj)
+        initial_knowledge = knowledge_store.get_player_knowledge(agent.name)
+        players.add_player(agent, role_name, role_obj,
+                           knowledge=initial_knowledge)
 
     # 打印角色信息
     players.print_roles()
@@ -497,9 +528,18 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                         Prompts.to_dead_player.format(killed_player),
                     )
                     await alive_players_hub.broadcast(msg_moderator)
-                    # 发表遗言
+                    # 发表遗言（携带个人理解作为上下文）
                     role_obj = players.name_to_role_obj[killed_player]
-                    last_msg = await role_obj.leave_last_words(msg_moderator)
+                    context = _format_impression_context(
+                        killed_player,
+                        players,
+                        round_public_records,
+                        round_num,
+                        "遗言",
+                    )
+                    last_msg = await role_obj.leave_last_words(
+                        _attach_context(msg_moderator, context),
+                    )
 
                     speech, behavior, thought, content_raw = _extract_msg_fields(
                         last_msg)
@@ -653,7 +693,16 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                     Prompts.to_dead_player.format(voted_player),
                 )
                 role_obj = players.name_to_role_obj[voted_player]
-                last_msg = await role_obj.leave_last_words(prompt_msg)
+                context = _format_impression_context(
+                    voted_player,
+                    players,
+                    round_public_records,
+                    round_num,
+                    "遗言",
+                )
+                last_msg = await role_obj.leave_last_words(
+                    _attach_context(prompt_msg, context),
+                )
 
                 speech, behavior, thought, content_raw = _extract_msg_fields(
                     last_msg)
@@ -726,6 +775,7 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
                 round_num,
                 moderator,
                 logger,
+                knowledge_store,
             )
 
             # 检查胜利条件
@@ -742,10 +792,22 @@ async def werewolves_game(agents: list[ReActAgent]) -> None:
         first_day = False
 
     # 游戏结束，每位玩家发表感言
-    await fanout_pipeline(
-        agents=agents,
-        msg=await moderator(Prompts.to_all_reflect),
-    )
+    final_prompt = await moderator(Prompts.to_all_reflect)
+    for role in players.all_roles:
+        context = _format_impression_context(
+            role.name,
+            players,
+            [],
+            round_num,
+            "游戏总结",
+        )
+        await role.agent(
+            _attach_context(final_prompt, context),
+        )
+
+    # 持久化本局累计的知识
+    knowledge_store.bulk_update(players.export_all_knowledge())
+    knowledge_store.save()
 
     # 确保日志文件关闭
     logger.close()
