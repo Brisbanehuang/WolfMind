@@ -194,10 +194,10 @@ async def main() -> None:
     # 从已有检查点加载状态
     print(f"正在加载检查点: {config.checkpoint_dir}/{config.checkpoint_id}.json")
     session = JSONSession(save_dir=config.checkpoint_dir)
-    await session.load_session_state(
-        session_id=config.checkpoint_id,
-        **{player.name: player for player in players},
-    )
+    # await session.load_session_state(
+    #     session_id=config.checkpoint_id,
+    #     **{player.name: player for player in players},
+    # )
     print("✓ 检查点加载完成\n")
 
     print("=" * 50)
@@ -208,10 +208,10 @@ async def main() -> None:
 
     # 将最新状态保存到检查点
     print(f"\n正在保存检查点: {config.checkpoint_dir}/{config.checkpoint_id}.json")
-    await session.save_session_state(
-        session_id=config.checkpoint_id,
-        **{player.name: player for player in players},
-    )
+    # await session.save_session_state(
+    #     session_id=config.checkpoint_id,
+    #     **{player.name: player for player in players},
+    # )
     print("✓ 检查点保存完成")
     print("\n游戏结束！")
 
