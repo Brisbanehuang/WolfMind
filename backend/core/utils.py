@@ -199,6 +199,16 @@ class Players:
         """更新某个玩家的长期游戏理解文本。"""
         self.knowledge[player_name] = knowledge or ""
 
+    def is_werewolf(self, player_name: str) -> bool:
+        """判断玩家是否为狼人（无论存活与否）。"""
+        return self.name_to_role.get(player_name) == "werewolf"
+
+    def get_werewolf_team_status(self) -> list[tuple[str, bool]]:
+        """返回所有狼人及其存活状态列表。"""
+        wolves = self.role_to_names.get("werewolf", [])
+        alive_names = {role.name for role in self.current_alive}
+        return [(name, name in alive_names) for name in wolves]
+
     def export_all_knowledge(self) -> dict[str, str]:
         """返回所有玩家知识条目的浅拷贝。"""
         return dict(self.knowledge)

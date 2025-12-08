@@ -69,6 +69,13 @@ def _format_impression_context(
 
     knowledge = players.get_knowledge(player_name)
 
+    # 仅向狼人提供的队友身份确认，避免出现“如果是狼人”等不确定描述
+    wolf_team_lines: list[str] = []
+    if players.is_werewolf(player_name):
+        team_status = players.get_werewolf_team_status()
+        for name, alive in team_status:
+            wolf_team_lines.append(f"{name}: {'存活' if alive else '已出局'}")
+
     recent_votes = [
         f"第{item.get('round')}轮{item.get('phase')}: {item.get('voter')} -> {item.get('target') or '弃权/无效'}"
         for item in vote_history[-8:]
@@ -80,6 +87,13 @@ def _format_impression_context(
         "\n".join(impression_lines) if impression_lines else "(暂无)",
         "你的长期游戏理解/经验 (跨局持久):",
         knowledge or "(目前为空)",
+        *(
+            ["你明确知道的狼人队友状态（含你自己）:"]
+            + wolf_team_lines
+            + ["注意：狼人始终清楚队友身份"]
+            if wolf_team_lines
+            else []
+        ),
         "本轮公开发言与动作:",
         "\n".join(record_lines) if record_lines else "(当前尚无公开发言)",
         "历史公开投票记录 (最多显示近8条):",
@@ -204,7 +218,8 @@ async def _reflection_phase(
         )
         prompt = await moderator_agent(
             f"[{role.name} ONLY] 本轮结束，请反思并更新你对其他存活玩家的印象。"
-            "只填写需要更新的玩家，未提及的保持不变。思考过程 thought 仅自己可见。",
+            "只填写需要更新的玩家，未提及的保持不变。思考过程 thought 仅自己可见。"
+            f"{' 你作为狼人，清楚知道所有狼人队友（含已出局）。' if getattr(role, 'role_name', '') == 'werewolf' else ''}",
         )
         msg_reflect = await role.agent(
             _attach_context(prompt, context),
