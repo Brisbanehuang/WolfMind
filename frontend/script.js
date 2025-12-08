@@ -92,12 +92,186 @@ async function loadGameLog(filename) {
     }
 }
 
+// 开始自动刷新
+function startAutoRefresh() {
+    stopAutoRefresh();
+    autoRefreshInterval = setInterval(() => {
+        if (currentLogFile) {
+            loadGameLog(currentLogFile);
+        }
+    }, 3000);
+}
+
+// 停止自动刷新
+function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+    }
+}
+
 // 解析并显示日志
 function parseAndDisplayLog(logContent) {
     const gameData = parseLogContent(logContent);
     displayGameInfo(gameData);
-    displayPlayers(gameData);
+
+    // Extract latest actions for bubbles
+    const playerActions = getLastActions(gameData);
+    displayPlayers(gameData, playerActions);
+
+    // We still keep the rounds history but maybe we can hide it or style it differently later
+    // based on user preference, but for now we ensure bubbles are the primary focus
     displayRounds(gameData);
+}
+
+// Get the latest significant action/speech for each player
+function getLastActions(gameData) {
+    const actions = {};
+    if (!gameData.rounds || gameData.rounds.length === 0) return actions;
+
+    // Look at the last round, and its last phase
+    const lastRound = gameData.rounds[gameData.rounds.length - 1];
+    if (!lastRound.phases || lastRound.phases.length === 0) return actions;
+
+    // Iterate through all phases in the last round to build context, 
+    // but give priority to the very last things said
+    // actually, let's just look at the last phase to avoid cluttering with old news
+    const lastPhase = lastRound.phases[lastRound.phases.length - 1];
+
+    lastPhase.actions.forEach(action => {
+        if (action.player && (action.speech || action.thought || action.behavior)) {
+            // Collect all available content
+            const actionData = {};
+            if (action.thought) actionData.thought = action.thought;
+            if (action.behavior) actionData.behavior = action.behavior;
+            if (action.speech) actionData.speech = action.speech;
+
+            // Only update if we have content
+            if (Object.keys(actionData).length > 0) {
+                actions[action.player] = actionData;
+            }
+        }
+    });
+
+    return actions;
+}
+
+// Keep the displayPlayers signature compatible or updated
+
+// 显示玩家卡片和气泡（最新动作）
+function displayPlayers(gameData, playerActions) {
+    const grid = document.getElementById('playersGrid');
+    grid.innerHTML = '';
+
+    const players = gameData.players || [];
+    const count = players.length || 0;
+
+    // center surface stays, re-add it
+    const surface = document.createElement('div');
+    surface.className = 'table-surface';
+    surface.innerHTML = '<div class="wolf-logo">🐺</div>';
+    grid.appendChild(surface);
+
+    if (count === 0) return;
+
+    // arrange players evenly around a circle
+    for (let i = 0; i < count; i++) {
+        const p = players[i];
+        const angle = (i / count) * Math.PI * 2 - Math.PI / 2; // start at top
+        const radiusPercent = 42; // distance from center in percent
+        const cx = 50 + Math.cos(angle) * radiusPercent;
+        const cy = 50 + Math.sin(angle) * radiusPercent;
+
+        const card = document.createElement('div');
+        card.className = `player-card role-${p.role || 'villager'}` + (p.alive === false ? ' dead' : '');
+        card.style.left = cx + '%';
+        card.style.top = cy + '%';
+        card.style.transform = 'translate(-50%, -50%)';
+
+        const content = document.createElement('div');
+        content.className = 'player-card-content';
+        content.style.background = 'rgba(255,255,255,0.02)';
+        content.style.padding = '10px 14px';
+        content.style.borderRadius = '12px';
+        content.style.minWidth = '120px';
+        content.style.textAlign = 'center';
+
+        const avatar = document.createElement('div');
+        avatar.className = 'player-avatar';
+        avatar.style.width = '56px';
+        avatar.style.height = '56px';
+        avatar.style.margin = '0 auto 8px';
+        avatar.style.borderRadius = '50%';
+        avatar.style.border = '3px solid rgba(255,255,255,0.06)';
+        avatar.style.display = 'flex';
+        avatar.style.alignItems = 'center';
+        avatar.style.justifyContent = 'center';
+        avatar.style.fontSize = '20px';
+        avatar.textContent = p.name || 'P';
+
+        const nameEl = document.createElement('div');
+        nameEl.style.fontWeight = '700';
+        nameEl.style.marginBottom = '4px';
+        nameEl.textContent = p.name || '-';
+
+        const roleBadge = document.createElement('div');
+        roleBadge.className = 'player-role-badge';
+        roleBadge.style.fontSize = '12px';
+        roleBadge.style.padding = '4px 8px';
+        roleBadge.style.borderRadius = '999px';
+        roleBadge.style.display = 'inline-block';
+        roleBadge.style.border = '1px solid rgba(255,255,255,0.04)';
+        roleBadge.textContent = roleMap[p.role] || p.role || '未知';
+
+        content.appendChild(avatar);
+        content.appendChild(nameEl);
+        content.appendChild(roleBadge);
+
+        if (p.alive === false) {
+            const deathMark = document.createElement('div');
+            deathMark.className = 'death-mark';
+            deathMark.textContent = '☠';
+            card.appendChild(deathMark);
+        }
+
+        card.appendChild(content);
+        grid.appendChild(card);
+
+        // add chat bubble if there's recent action
+        const act = playerActions && playerActions[p.name];
+        if (act) {
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble ' + (Math.sin(angle) > 0 ? 'pos-bottom' : 'pos-top');
+            bubble.style.left = cx + '%';
+            // place bubble slightly offset vertically
+            bubble.style.transform = 'translateX(-50%)';
+
+            const inner = document.createElement('div');
+            inner.className = 'bubble-content-scroll';
+
+            if (act.thought) {
+                const s = document.createElement('div');
+                s.className = 'bubble-section section-thought';
+                s.textContent = act.thought;
+                inner.appendChild(s);
+            }
+            if (act.behavior) {
+                const b = document.createElement('div');
+                b.className = 'bubble-section section-behavior';
+                b.textContent = act.behavior;
+                inner.appendChild(b);
+            }
+            if (act.speech) {
+                const sp = document.createElement('div');
+                sp.className = 'bubble-section section-speech';
+                sp.textContent = act.speech;
+                inner.appendChild(sp);
+            }
+
+            bubble.appendChild(inner);
+            grid.appendChild(bubble);
+        }
+    }
 }
 
 // 解析日志内容
@@ -115,6 +289,7 @@ function parseLogContent(content) {
     let currentRound = null;
     let currentPhase = null;
     let currentAction = null;
+    let currentLogState = null; // 'thought', 'behavior', 'speech', 'details'
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -194,16 +369,25 @@ function parseLogContent(content) {
             }
         }
 
-        // 解析心声、表现、发言
+        // 解析心声、表现、发言 (Multi-line support)
         if (currentAction) {
             if (line.startsWith('(心声)')) {
                 currentAction.thought = line.substring(4).trim();
+                currentLogState = 'thought';
             } else if (line.startsWith('(表现)')) {
                 currentAction.behavior = line.substring(4).trim();
+                currentLogState = 'behavior';
             } else if (line.startsWith('(发言)')) {
                 currentAction.speech = line.substring(4).trim();
+                currentLogState = 'speech';
             } else if (line.includes('投票给') || line.includes('查验') || line.includes('使用')) {
                 currentAction.details = line;
+                currentLogState = 'details';
+            } else if (currentLogState && currentAction && !line.startsWith('[') && !line.startsWith('游戏ID:') && !line.startsWith('开始时间:') && !line.startsWith('游戏结束') && !line.startsWith('- Player') && !line.match(/^第 \d+ 回合$/) && !line.match(/^[【📢💀📊]/)) {
+                // Continuation of previous field
+                if (currentLogState === 'thought') currentAction.thought += '\n' + line;
+                if (currentLogState === 'behavior') currentAction.behavior += '\n' + line;
+                if (currentLogState === 'speech') currentAction.speech += '\n' + line;
             }
         }
 
@@ -267,60 +451,6 @@ function displayGameInfo(gameData) {
     document.getElementById('startTime').textContent = gameData.startTime || '-';
     document.getElementById('endTime').textContent = gameData.endTime || '游戏进行中';
     document.getElementById('gameStatus').textContent = gameData.status || '进行中';
-}
-
-// 显示玩家列表
-// 显示玩家列表
-function displayPlayers(gameData) {
-    const playersGrid = document.getElementById('playersGrid');
-    const totalPlayers = gameData.players.length;
-    const radius = 260; // Distance from center
-
-    // Build HTML for table (static center) + players
-    let html = `
-        <div class="table-surface">
-            <div class="wolf-logo">🐺</div>
-        </div>
-    `;
-
-    gameData.players.forEach((player, index) => {
-        // Calculate position in circle
-        // -90deg to start from top
-        const angle = (index * (360 / totalPlayers)) - 90;
-        const radians = angle * (Math.PI / 180);
-
-        // Offset from center (300, 300) since container is 600x600
-        // But we use CSS relative to 50% 50%, so simple trig is enough for transform
-        const x = Math.round(Math.cos(radians) * radius);
-        const y = Math.round(Math.sin(radians) * radius);
-
-        html += `
-            <div class="player-card ${player.alive ? '' : 'dead'}" 
-                 style="transform: translate(${x}px, ${y}px)">
-                ${!player.alive ? '<div class="death-mark">💀</div>' : ''}
-                <div class="player-avatar">
-                   ${getRoleIcon(player.role)}
-                </div>
-                <div class="player-name">${player.name}</div>
-                <div class="player-role-badge role-${player.role}">
-                    ${roleMap[player.role] || player.role}
-                </div>
-            </div>
-        `;
-    });
-
-    playersGrid.innerHTML = html;
-}
-
-function getRoleIcon(role) {
-    const icons = {
-        'werewolf': '🐺',
-        'villager': '🧑‍🌾',
-        'seer': '🔮',
-        'witch': '🧪',
-        'hunter': '🔫'
-    };
-    return icons[role] || '👤';
 }
 
 // 显示回合
@@ -390,20 +520,4 @@ function showError(message) {
     document.getElementById('roundsContainer').innerHTML = `<div class="error">❌ ${message}</div>`;
 }
 
-// 开始自动刷新
-function startAutoRefresh() {
-    stopAutoRefresh();
-    autoRefreshInterval = setInterval(() => {
-        if (currentLogFile) {
-            loadGameLog(currentLogFile);
-        }
-    }, 5000);
-}
 
-// 停止自动刷新
-function stopAutoRefresh() {
-    if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
-        autoRefreshInterval = null;
-    }
-}
