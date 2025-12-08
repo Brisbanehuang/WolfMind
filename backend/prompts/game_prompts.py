@@ -51,7 +51,9 @@ class EnglishPrompts:
         "is eliminated. You can resurrect him/her by using your healing "
         "potion, "
         "and note you can only use it once in the whole game. Do you want to "
-        "resurrect {dead_name}? Give me your reason and decision."
+        "resurrect {dead_name}? Give me your reason and decision. Only you "
+        "know the kill target; the rescued player will NOT know they were "
+        "attacked unless the moderator announces a death."
     )
 
     to_witch_resurrect_no = (
@@ -164,7 +166,8 @@ class ChinesePrompts:
     to_witch_resurrect = (
         "[仅女巫可见] {witch_name}，你是女巫，今晚{dead_name}被淘汰。"
         "你可以用解药救他/她，注意解药全局只能用一次。你要救{dead_name}吗？"
-        "请给出理由和决定。"
+        "请给出理由和决定。只有你知道今晚的刀口，被救的玩家本人不会知道自己被刀，"
+        "其他玩家也只能通过主持人公布的公开信息获知死亡情况。"
     )
 
     to_witch_resurrect_no = "[仅女巫可见] 女巫选择不救该玩家。"
