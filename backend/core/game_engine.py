@@ -160,6 +160,28 @@ def _extract_msg_fields(msg: Msg) -> tuple[str, str, str, str]:
     return speech_s, behavior_s, thought_s, content_s
 
 
+def _make_public_msg(
+    msg: Msg,
+    speech: str,
+    behavior: str,
+    content_raw: str,
+) -> Msg:
+    """生成仅包含可公开信息的消息，移除 thought 等私密字段。"""
+
+    metadata = dict(getattr(msg, "metadata", {}) or {})
+    metadata.pop("thought", None)
+
+    parts = []
+    if behavior:
+        parts.append(f"[表现] {behavior}")
+    visible_text = speech or content_raw
+    if visible_text:
+        parts.append(visible_text)
+    content = "\n".join(parts) if parts else "(无发言)"
+
+    return Msg(msg.name, content, role=msg.role, metadata=metadata)
+
+
 async def _reflection_phase(
     players: Players,
     vote_history: list[dict[str, Any]],
@@ -317,7 +339,7 @@ async def werewolves_game(
             werewolf_agents = [w.agent for w in players.werewolves]
             async with MsgHub(
                 werewolf_agents,
-                enable_auto_broadcast=True,
+                enable_auto_broadcast=False,
                 announcement=await moderator(
                     Prompts.to_wolves_discussion.format(
                         names_to_str(werewolf_agents),
@@ -344,6 +366,10 @@ async def werewolves_game(
                     # 记录狼人讨论
                     speech, behavior, thought, content_raw = _extract_msg_fields(
                         res)
+                    # 手动广播去隐私的消息，避免 thought 外泄
+                    await werewolves_hub.broadcast(
+                        _make_public_msg(res, speech, behavior, content_raw),
+                    )
                     logger.log_message_detail(
                         "狼人讨论",
                         werewolf.name,
@@ -602,7 +628,10 @@ async def werewolves_game(
                         },
                     )
 
-                    await alive_players_hub.broadcast(last_msg)
+                    await alive_players_hub.broadcast(
+                        _make_public_msg(last_msg, speech,
+                                         behavior, content_raw),
+                    )
 
             else:
                 logger.log_announcement("天亮了，请所有玩家睁眼。昨晚平安夜，无人被淘汰。")
@@ -626,8 +655,6 @@ async def werewolves_game(
                     ),
                 ),
             )
-            # 开启自动广播以进行讨论
-            alive_players_hub.set_auto_broadcast(True)
             # 更新存活智能体列表
             current_alive_agents = [
                 role.agent for role in players.current_alive]
@@ -646,9 +673,13 @@ async def werewolves_game(
                 msg = await role.day_discussion(
                     _attach_context(await moderator(""), context),
                 )
-                discussion_msgs.append(msg)
                 speech, behavior, thought, content_raw = _extract_msg_fields(
                     msg)
+                # 手动广播去隐私的消息，避免 thought 外泄
+                await alive_players_hub.broadcast(
+                    _make_public_msg(msg, speech, behavior, content_raw),
+                )
+                discussion_msgs.append(msg)
                 logger.log_message_detail(
                     "白天讨论",
                     role.name,
@@ -664,9 +695,6 @@ async def werewolves_game(
                         "phase": "白天讨论",
                     },
                 )
-
-            # 禁用自动广播以避免泄露信息
-            alive_players_hub.set_auto_broadcast(False)
 
             # 投票
             vote_prompt = await moderator(
@@ -781,7 +809,13 @@ async def werewolves_game(
                     },
                 )
 
-                voting_msgs.extend([prompt_msg, last_msg])
+                voting_msgs.extend(
+                    [
+                        prompt_msg,
+                        _make_public_msg(last_msg, speech,
+                                         behavior, content_raw),
+                    ],
+                )
 
             await alive_players_hub.broadcast(voting_msgs)
 
