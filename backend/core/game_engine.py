@@ -1107,6 +1107,12 @@ async def werewolves_game(
                 knowledge_store,
             )
 
+            # 记录回合结束时的存活玩家名单，便于回溯局势
+            logger.log_alive_players(
+                round_num,
+                [role.name for role in players.current_alive],
+            )
+
             # 检查胜利条件
             res = players.check_winning()
             if res:

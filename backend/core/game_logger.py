@@ -77,8 +77,8 @@ class GameLogger:
         "狼人讨论": "🐺 狼人频道",
         "狼人投票": "🗡️ 狼人投票",
         "女巫行动": "💊 女巫行动",
-        "女巫行动(解药)": "💊 女巫行动",
-        "女巫行动(毒药)": "💊 女巫行动",
+        "女巫行动(解药)": "💊 女巫解药",
+        "女巫行动(毒药)": "💊 女巫毒药",
         "预言家行动": "🔮 预言家行动",
         "预言家查验": "🔮 预言家行动",
         "猎人开枪": "🔫 猎人开枪",
@@ -193,6 +193,15 @@ class GameLogger:
         cat_display = self._get_category_display("公告")
         with open(self.log_file, 'a', encoding='utf-8') as f:
             f.write(f"[{timestamp}] {cat_display}\n    {content}\n\n")
+
+    def log_alive_players(self, round_num: int, alive_players: list[str]):
+        """记录当前存活玩家列表，通常在每回合结束时调用。"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        alive_text = ", ".join(alive_players) if alive_players else "(无人存活)"
+        with open(self.log_file, 'a', encoding='utf-8') as f:
+            f.write(
+                f"[{timestamp}] 📋 存活玩家(第{round_num}回合结束): {alive_text}\n\n"
+            )
 
     def log_last_words(self, player_name: str, content: str):
         """记录遗言"""
