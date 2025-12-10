@@ -119,7 +119,8 @@ class EchoAgent(AgentBase):
             content,
             role="assistant",
         )
-        await self.print(msg)
+        # 禁用打印以避免重复输出（日志已记录所有内容）
+        # await self.print(msg)
         return msg
 
     async def handle_interrupt(
@@ -127,7 +128,12 @@ class EchoAgent(AgentBase):
         *args: Any,
         **kwargs: Any,
     ) -> Msg:
-        """处理打断（占位，无额外逻辑）。"""
+        """处理打断，返回空消息。"""
+        return Msg(
+            self.name,
+            "",
+            role="assistant",
+        )
 
     async def observe(self, msg: Msg | list[Msg] | None) -> None:
         """观察消息（占位，无额外逻辑）。"""

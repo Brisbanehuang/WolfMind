@@ -182,7 +182,10 @@ class ChinesePrompts:
         "如果达成一致，请将 `reach_agreement` 设为 True。"
     )
 
-    to_wolves_vote = "[仅狼人可见] 你投票要杀死哪位玩家？必须选择一名目标。"
+    to_wolves_vote = (
+        "[仅狼人可见] 你投票要杀死哪位玩家？必须选择一名目标。"
+        "务必返回 speech、behavior、thought 三个字段，且只返回这三项。"
+    )
 
     to_wolves_res = "[仅狼人可见] 投票结果为 {}，你们选择淘汰 {}。"
 
@@ -192,20 +195,30 @@ class ChinesePrompts:
         "你可以用解药救他/她，注意解药全局只能用一次。你要救{dead_name}吗？"
         "请给出理由和决定。只有你知道今晚的刀口，被救的玩家本人不会知道自己被刀，"
         "其他玩家也只能通过主持人公布的公开信息获知死亡情况。"
+        "务必返回 speech、behavior、thought 三个字段，且只返回这三项。"
     )
 
     to_witch_resurrect_no = "[仅女巫可见] 女巫选择不救该玩家。"
     to_witch_resurrect_yes = "[仅女巫可见] 女巫选择救活该玩家。"
 
-    to_witch_poison = "[仅女巫可见] {witch_name}，你有一瓶一次性毒药，今晚要使用吗？请给出理由和决定。"
+    to_witch_poison = (
+        "[仅女巫可见] {witch_name}，你有一瓶一次性毒药，今晚要使用吗？请给出理由和决定。"
+        "务必返回 speech、behavior、thought 三个字段，且只返回这三项。"
+    )
 
     to_all_seer_turn = "轮到预言家行动，预言家请睁眼并查验一名玩家身份..."
 
-    to_seer = "[仅预言家可见] {}, 你是预言家，今晚可以查验一名玩家身份。你要查谁？请给出理由和决定。"
+    to_seer = (
+        "[仅预言家可见] {}, 你是预言家，今晚可以查验一名玩家身份。你要查谁？请给出理由和决定。"
+        "务必返回 speech、behavior、thought 三个字段，且只返回这三项。"
+    )
 
     to_seer_result = "[仅预言家可见] 你查验了{agent_name}，结果是：{role}。"
 
-    to_hunter = "[仅猎人可见] {name}，你是猎人，今晚被淘汰。你可以选择带走一名玩家，也可以选择不带走。请给出理由和决定。"
+    to_hunter = (
+        "[仅猎人可见] {name}，你是猎人，今晚被淘汰。你可以选择带走一名玩家，也可以选择不带走。请给出理由和决定。"
+        "务必返回 speech、behavior、thought 三个字段，且只返回这三项。"
+    )
 
     to_all_hunter_shoot = "猎人选择带走 {} 一起出局。"
 
@@ -215,7 +228,10 @@ class ChinesePrompts:
 
     to_all_discuss = "现在存活玩家有：{names}。游戏继续，大家开始讨论并投票淘汰一名玩家。请按顺序（{names}）依次发言。"
 
-    to_all_vote = "讨论结束。请大家从存活玩家中投票淘汰一人：{}。如要弃权，请回复“弃权”或留空。"
+    to_all_vote = (
+        "讨论结束。请大家从存活玩家中投票淘汰一人：{}。如要弃权，请回复“弃权”或留空。"
+        "务必返回 speech、behavior、thought 三个字段，且只返回这三项。"
+    )
 
     to_all_res = "投票结果为 {}，{} 被淘汰。"
 
@@ -229,6 +245,7 @@ class ChinesePrompts:
 
     to_all_pk_vote = (
         "PK 发言结束。请所有存活玩家仅在平票玩家中投票选择一人：{0}。不允许弃权。"
+        "务必返回 speech、behavior、thought 三个字段，且只返回这三项。"
     )
 
     to_all_pk_res = (

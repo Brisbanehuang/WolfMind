@@ -139,6 +139,7 @@ def get_official_agents(name: str) -> ReActAgent:
                 model_name=config.dashscope_model_name,
             ),
             formatter=DashScopeMultiAgentFormatter(),
+            print_hint_msg=False,  # 禁用提示信息打印，避免重复输出
         )
     elif config.model_provider == "openai":
         agent = ReActAgent(
@@ -152,6 +153,7 @@ def get_official_agents(name: str) -> ReActAgent:
                 },
             ),
             formatter=OpenAIMultiAgentFormatter(),
+            print_hint_msg=False,  # 禁用提示信息打印，避免重复输出
         )
     elif config.model_provider == "ollama":
         agent = ReActAgent(
@@ -161,6 +163,7 @@ def get_official_agents(name: str) -> ReActAgent:
                 model_name=config.ollama_model_name,
             ),
             formatter=OllamaMultiAgentFormatter(),
+            print_hint_msg=False,  # 禁用提示信息打印，避免重复输出
         )
     else:
         raise ValueError(f"不支持的模型提供商: {config.model_provider}")
