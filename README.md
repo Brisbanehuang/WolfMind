@@ -25,7 +25,7 @@
 - 🤖 **智能 AI 玩家**：基于 LLM 的智能体，具备推理、欺骗、协作能力
 - 🎭 **完整角色系统**：支持狼人、村民、预言家、女巫、猎人等经典角色
 - 📝 **详细游戏日志**：自动记录每局游戏的完整过程，便于分析和回放
-- 🔄 **检查点机制**：支持游戏状态保存和恢复
+- 🔄 **玩家经验**：实时更新并保存玩家的游戏经验
 - 🌐 **多模型支持**：兼容 DashScope（通义千问）、OpenAI等多种 LLM
 
 ## 功能特性
@@ -37,7 +37,7 @@
 - ✅ 智能体之间的自然语言交互
 - ✅ 游戏状态管理和胜负判定
 - ✅ 详细的游戏日志记录系统
-- ✅ 检查点保存和加载
+- ✅ 玩家经验更新与保存
 - ✅ 多 LLM 提供商支持
 - ✅ 玩家画像和对手建模
 - ✅ AI 智能体自主学习和策略优化
@@ -131,7 +131,7 @@ werewolf-game/
 │   │   ├── game_prompts.py   # 游戏提示词
 │   │   └── role_prompts.py   # 角色提示词
 │   ├── data/                 # 数据目录
-│   │   ├── checkpoints/      # 游戏检查点
+│   │   ├── experiences/      # 玩家经验存档
 │   │   └── game_logs/        # 游戏日志
 │   ├── .env.example          # 环境变量示例
 │   └── requirements.txt      # Python 依赖
@@ -142,10 +142,10 @@ werewolf-game/
 ## 系统架构与关键模块
 
 - 主入口：[backend/main.py](backend/main.py) 负责读取配置、初始化 9 名 ReActAgent 玩家、构建知识库并启动一局完整对局。
-- 配置管理：[backend/config.py](backend/config.py) 从 `.env` 读取模型提供商、API Key、回合上限和检查点路径等参数，并提供校验和脱敏打印。
+- 配置管理：[backend/config.py](backend/config.py) 从 `.env` 读取模型提供商、API Key、回合上限和玩家经验存档路径等参数，并提供校验和脱敏打印。
 - 核心引擎：[backend/core/game_engine.py](backend/core/game_engine.py) 实现夜晚/白天循环、平票 PK、猎人开枪、胜负判定以及跨局知识更新。
 - 日志系统：[backend/core/game_logger.py](backend/core/game_logger.py) 将每局的关键动作写入 `backend/data/game_logs/game_<timestamp>.log`，包含发言、行为、思考、投票与死亡信息。
-- 长期记忆：[backend/core/knowledge_base.py](backend/core/knowledge_base.py) 为每名玩家维护持久化知识，启动时创建带时间戳的新检查点，回合后自动增量保存。
+- 长期记忆：[backend/core/knowledge_base.py](backend/core/knowledge_base.py) 为每名玩家维护持久化知识，启动时创建带时间戳的新经验存档，回合后自动增量保存。
 - 角色逻辑：[backend/models/roles.py](backend/models/roles.py) 定义狼人、村民、预言家、女巫、猎人五类角色的专属夜晚行为、投票/讨论流程及提示词。
 - 数据模型：[backend/models/schemas.py](backend/models/schemas.py) 用 Pydantic 规范化输出结构（speech/behavior/thought、投票、毒药/查验/开枪等）。
 - 提示词集合：[backend/prompts/game_prompts.py](backend/prompts/game_prompts.py) 与 [backend/prompts/role_prompts.py](backend/prompts/role_prompts.py) 分别提供主持人/流程提示与角色策略指南。
@@ -153,7 +153,7 @@ werewolf-game/
 ## 运行时输出与数据
 
 - **游戏日志**：默认写入 `backend/data/game_logs`，包含完整时序的发言、投票、行动及胜负公告，便于回放与分析。
-- **检查点/知识库**：每次启动都会在 `backend/data/checkpoints` 新建带时间戳的 `players_checkpoint_*.json`，保存玩家的跨局经验；本局结束时会合并最新认知并落盘。
+- **经验存档/知识库**：每次启动都会在 `backend/data/experiences` 新建带时间戳的 `players_experience_*.json`，保存玩家的跨局经验；本局结束时会合并最新认知并落盘。历史示例文件仍保留 `checkpoint` 前缀，兼容查看。
 
 
 
@@ -274,12 +274,12 @@ werewolf-game/
     (发言) Player5的发言显得很真诚，但我们需要更多的线索来确定谁是狼人。我们应该仔细考虑每个玩家的言行，找出不一致的地方。
 ```
 
-### 示例完整游戏日志
+### 示例完整游戏日志 / 玩家经验
 
-示例完整游戏日志/检查点快照存放于 `static/`，可直接查看：
-- [static/players_checkpoint_20251210_150049_glm-4.6.json](static/players_checkpoint_20251210_150049_glm-4.6.json)
-- [static/players_checkpoint_20251210_164823_glm-4.6.log](static/game_20251210_150049_glm-4.6.log)
-- 更多示例请查看 `static/` 目录
+示例历史快照位于 `static/`，文件名沿用旧的 `checkpoint` 前缀，直接点击可查看：
+- [完整对局日志（GLM-4.6）](static/game_20251210_150049_glm-4.6.log)
+- [完整对局经验存档（GLM-4.6）](static/players_experience_20251210_150049_glm-4.6.json)
+- 更多示例请自行查看 `static/`
 
 
 ## 技术栈
