@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""轻量级的玩家长期知识检查点管理。"""
+"""轻量级的玩家长期知识“经验存档”管理。"""
 from __future__ import annotations
 
 import json
@@ -11,9 +11,9 @@ from typing import Dict
 class PlayerKnowledgeStore:
     """管理每位玩家的长期游戏理解。
 
-    每次程序启动都会创建一个全新的、带时间戳的检查点文件，保证首局游戏
-    从空白知识库开始。知识只保存可跨局复用的经验/理解，不包含任何一局
-    的具体发言或投票细节。
+    每次程序启动都会创建一个全新的、带时间戳的经验存档文件，保证首局
+    游戏从空白知识库开始。知识只保存可跨局复用的经验/理解，不包含任何
+    一局的具体发言或投票细节。
     """
 
     def __init__(self, checkpoint_dir: str, base_filename: str) -> None:

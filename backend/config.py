@@ -110,18 +110,18 @@ class Config:
     # ==================== 检查点配置 ====================
 
     @property
-    def checkpoint_dir(self) -> str:
-        """检查点保存目录"""
-        raw_path = self._get("CHECKPOINT_DIR", "data/checkpoints")
+    def experience_dir(self) -> str:
+        """经验存档保存目录。"""
+        raw_path = self._get("EXPERIENCE_DIR", "data/experiences")
         path = Path(raw_path)
         if not path.is_absolute():
             path = self.base_dir / path
         return str(path)
 
     @property
-    def checkpoint_id(self) -> str:
-        """检查点文件名"""
-        return self._get("CHECKPOINT_ID", "players_checkpoint")
+    def experience_id(self) -> str:
+        """经验存档文件名前缀。"""
+        return self._get("EXPERIENCE_ID", "players_experience")
 
     # ==================== 验证方法 ====================
 
@@ -174,7 +174,7 @@ class Config:
         print(f"最大游戏轮数: {self.max_game_round}")
         print(f"最大讨论轮数: {self.max_discussion_round}")
         print(f"启用 Studio: {self.enable_studio}")
-        print(f"检查点目录: {self.checkpoint_dir}")
+        print(f"经验存档目录: {self.experience_dir}")
         print("=" * 50)
 
 

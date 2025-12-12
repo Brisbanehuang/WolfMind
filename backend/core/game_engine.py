@@ -328,8 +328,8 @@ async def werewolves_game(
 
     # 知识库初始化：首次加载，以确保后续回合/局可以复用经验
     knowledge_store = knowledge_store or PlayerKnowledgeStore(
-        checkpoint_dir=config.checkpoint_dir,
-        base_filename=config.checkpoint_id,
+        checkpoint_dir=config.experience_dir,
+        base_filename=config.experience_id,
     )
     knowledge_store.load()
 

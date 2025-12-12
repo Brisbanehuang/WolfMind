@@ -41,9 +41,9 @@ agent/
 backend/.env
 
 # Data
-data/checkpoints/*.json
+data/experiences/*.json
 data/game_logs/*.log
-backend/data/checkpoints/*.json
+backend/data/experiences/*.json
 backend/data/game_logs/*.log
 
 # Logs

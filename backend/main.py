@@ -200,16 +200,16 @@ async def main() -> None:
 
     # 初始化玩家知识库（每次启动都会创建新的空文件）
     knowledge_store = PlayerKnowledgeStore(
-        checkpoint_dir=config.checkpoint_dir,
-        base_filename=config.checkpoint_id,
+        checkpoint_dir=config.experience_dir,
+        base_filename=config.experience_id,
     )
     print(f"✓ 知识库已创建: {knowledge_store.path}")
 
     # 提示：也可以在此替换为自定义的全部代理
 
     # 从已有检查点加载状态
-    print(f"正在加载检查点: {config.checkpoint_dir}/{config.checkpoint_id}.json")
-    session = JSONSession(save_dir=config.checkpoint_dir)
+    print(f"正在加载经验存档: {config.experience_dir}/{config.experience_id}.json")
+    session = JSONSession(save_dir=config.experience_dir)
     # await session.load_session_state(
     #     session_id=config.checkpoint_id,
     #     **{player.name: player for player in players},
@@ -223,9 +223,9 @@ async def main() -> None:
     await werewolves_game(players, knowledge_store=knowledge_store)
 
     # 将最新状态保存到检查点
-    print(f"\n正在保存检查点: {config.checkpoint_dir}/{config.checkpoint_id}.json")
+    print(f"\n正在保存经验存档: {config.experience_dir}/{config.experience_id}.json")
     # await session.save_session_state(
-    #     session_id=config.checkpoint_id,
+    #     session_id=config.experience_id,
     #     **{player.name: player for player in players},
     # )
     print("✓ 检查点保存完成")
