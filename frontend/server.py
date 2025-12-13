@@ -29,8 +29,13 @@ class LogServerHandler(SimpleHTTPRequestHandler):
             return
         
         # 默认处理静态文件
+        # print(f"Handling static file request: {self.path}") # Debug log
         super().do_GET()
     
+    def log_message(self, format, *args):
+        """覆盖默认日志方法以打印详细信息"""
+        print(f"[{self.log_date_time_string()}] {format % args}")
+
     def get_log_files(self):
         """获取所有日志文件列表"""
         # 从frontend目录向上一级，然后进入backend/data/game_logs
@@ -38,7 +43,10 @@ class LogServerHandler(SimpleHTTPRequestHandler):
         project_root = os.path.dirname(current_dir)
         log_dir = os.path.join(project_root, 'backend', 'data', 'game_logs')
         
+        # print(f"Looking for logs in: {log_dir}") # Debug log
+        
         if not os.path.exists(log_dir):
+            print(f"Warning: Log directory does not exist: {log_dir}")
             return []
         
         files = []
