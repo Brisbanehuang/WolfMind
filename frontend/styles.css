@@ -486,114 +486,166 @@ body {
 }
 
 .round-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--accent-light);
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    padding: 10px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.round-title::before {
+    content: '🎮';
 }
 
 .phase-block {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+    padding-left: 12px;
+    border-left: 3px solid var(--border);
 }
 
 .phase-label {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-bottom: 8px;
-    display: flex;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
-.phase-label::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--text-dim);
+.phase-label.night {
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.25), transparent);
+    border-left: 3px solid #6366f1;
 }
 
-.phase-label.night::before {
-    background: #6366f1;
+.phase-label.day {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.25), transparent);
+    border-left: 3px solid #f59e0b;
 }
 
-.phase-label.day::before {
-    background: #f59e0b;
-}
-
-/* Action Cards */
+/* Action Cards - Player Messages */
 .action-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 8px;
-    transition: background 0.15s;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    margin-left: 8px;
+    transition: all 0.15s;
 }
 
 .action-card:hover {
     background: var(--bg-hover);
+    border-left-color: var(--accent-light);
+    transform: translateX(4px);
 }
 
 .action-meta {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 8px;
-    font-size: 12px;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
 }
 
 .action-player {
     color: var(--accent-light);
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 13px;
 }
 
 .action-time {
     color: var(--text-dim);
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 4px;
 }
 
 .action-body {
     font-size: 13px;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 
 .action-thought {
     color: #fde047;
+    background: rgba(253, 224, 71, 0.1);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 8px;
     font-style: italic;
-    margin-bottom: 4px;
+    border-left: 3px solid #fde047;
 }
 
 .action-behavior {
     color: #7dd3fc;
-    margin-bottom: 4px;
+    background: rgba(125, 211, 252, 0.1);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    border-left: 3px solid #7dd3fc;
 }
 
 .action-speech {
     color: #a7f3d0;
+    background: rgba(167, 243, 208, 0.1);
+    padding: 8px 12px;
+    border-radius: 6px;
+    border-left: 3px solid #a7f3d0;
 }
 
-/* System Messages */
+/* System Messages - Distinct Style */
 .system-msg {
     text-align: center;
-    padding: 10px;
-    margin-bottom: 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border);
+    padding: 12px 20px;
+    margin: 16px 0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px dashed var(--border);
+    position: relative;
+}
+
+.system-msg::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -8px;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 2px;
+    background: var(--border);
 }
 
 .system-msg.death {
-    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.4);
     color: #fca5a5;
 }
 
+.system-msg.death::before {
+    background: #ef4444;
+}
+
 .system-msg.vote {
-    border-color: rgba(124, 58, 237, 0.3);
+    background: rgba(124, 58, 237, 0.1);
+    border-color: rgba(124, 58, 237, 0.4);
     color: var(--accent-light);
+}
+
+.system-msg.vote::before {
+    background: var(--accent);
 }
 
 /* Loading & Error */
