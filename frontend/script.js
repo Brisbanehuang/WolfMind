@@ -266,32 +266,53 @@ function renderTable(gameData) {
 
         seat.appendChild(card);
 
-        // Only show bubble for the SINGLE latest speaker (behavior + speech only)
+        // Only show bubble for the SINGLE latest speaker
         if (lastActions && lastActions.player === player.name && player.alive !== false) {
-            const bubble = document.createElement('div');
-            const isTop = Math.sin(angle) < 0;
-
-            // Build content: behavior first, then speech (NO thought)
-            let bubbleContent = '';
-            if (lastActions.behavior) {
-                bubbleContent += '👁 ' + lastActions.behavior;
-            }
-            if (lastActions.speech) {
-                if (bubbleContent) bubbleContent += '\n\n';
-                bubbleContent += '💬 ' + lastActions.speech;
-            }
+            let bubbleContent = lastActions.speech || lastActions.behavior || '';
 
             if (bubbleContent) {
-                bubble.className = `speech-bubble bubble-speech ${isTop ? 'bubble-top' : 'bubble-bottom'}`;
-                bubble.textContent = bubbleContent.length > 150
-                    ? bubbleContent.substring(0, 150) + '...'
+                const bubble = document.createElement('div');
+                
+                // Truncate text - keep it short and readable
+                const maxLen = 35;
+                const displayText = bubbleContent.length > maxLen 
+                    ? bubbleContent.substring(0, maxLen) + '...' 
                     : bubbleContent;
-                bubble.style.left = '50%';
-                bubble.style.transform = 'translateX(-50%)';
-                bubble.style.whiteSpace = 'pre-wrap';
-                bubble.style[isTop ? 'bottom' : 'top'] = '100%';
-                bubble.style.marginTop = isTop ? '' : '12px';
-                bubble.style.marginBottom = isTop ? '12px' : '';
+                
+                const cosAngle = Math.cos(angle);
+                const sinAngle = Math.sin(angle);
+                
+                // Determine which direction the bubble tail should point
+                // Based on player position, bubble appears outward with tail pointing back to player
+                let tailDirection = '';
+                let positionStyle = {};
+                
+                if (sinAngle < -0.5) {
+                    // Top area - bubble above, tail points down
+                    tailDirection = 'tail-bottom';
+                    positionStyle = { bottom: 'calc(100% + 15px)', left: '50%', transform: 'translateX(-50%)' };
+                } else if (sinAngle > 0.5) {
+                    // Bottom area - bubble below, tail points up
+                    tailDirection = 'tail-top';
+                    positionStyle = { top: 'calc(100% + 15px)', left: '50%', transform: 'translateX(-50%)' };
+                } else if (cosAngle < -0.3) {
+                    // Left area - bubble to left, tail points right
+                    tailDirection = 'tail-right';
+                    positionStyle = { right: 'calc(100% + 15px)', top: '50%', transform: 'translateY(-50%)' };
+                } else {
+                    // Right area - bubble to right, tail points left
+                    tailDirection = 'tail-left';
+                    positionStyle = { left: 'calc(100% + 15px)', top: '50%', transform: 'translateY(-50%)' };
+                }
+                
+                bubble.className = `speech-bubble ${tailDirection}`;
+                bubble.textContent = displayText;
+                
+                // Apply position styles
+                Object.keys(positionStyle).forEach(key => {
+                    bubble.style[key] = positionStyle[key];
+                });
+                
                 seat.appendChild(bubble);
             }
         }
