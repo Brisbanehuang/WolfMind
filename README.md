@@ -2,7 +2,7 @@
 
 <div align="center">
 
-🐺 基于 AgentScope 的多智能体狼人杀游戏系统
+🐺 基于 AgentScope 的多智能体狼人杀游戏系统（含 Web 控制台与日志查看）
 
 ![狼人杀 AI 游戏](./static/werewolf_ai_game.png)
 
@@ -18,7 +18,7 @@
 
 ## 简介
 
-这是一个基于大语言模型（LLM）和多智能体框架 AgentScope 构建的狼人杀游戏系统。9 个 AI 智能体将扮演不同角色（狼人、村民、预言家、女巫、猎人），通过自然语言进行推理、讨论、投票，展现出复杂的策略博弈和社交推理能力。
+这是一个基于大语言模型（LLM）和多智能体框架 AgentScope 构建的狼人杀游戏系统。9 个 AI 智能体将扮演不同角色（狼人、村民、预言家、女巫、猎人），通过自然语言进行推理、讨论、投票，展现出复杂的策略博弈和社交推理能力，并提供 Web 控制台用于启动/停止游戏与实时查看日志。
 
 ### 核心亮点
 
@@ -36,17 +36,17 @@
 - ✅ 9 个角色的独立行为逻辑
 - ✅ 智能体之间的自然语言交互
 - ✅ 游戏状态管理和胜负判定
-- ✅ 详细的游戏日志记录系统
+- ✅ 详细的游戏日志记录系统（自动标记结束状态，异常终止亦会落盘）
 - ✅ 玩家经验更新与保存
 - ✅ 多 LLM 提供商支持
 - ✅ 玩家画像和对手建模
 - ✅ AI 智能体自主学习和策略优化
 - ✅ 经验和策略知识库
+- ✅ Web 控制台：日志列表/查看、自动刷新、启动/停止游戏
 
 ### 开发中功能 🚧
 
-- 🚧 Web 前端界面
-- 🚧 根据游戏日志进行深度分析
+- 🚧 基于日志的深度数据分析
 
 
 ## 快速开始
@@ -72,7 +72,22 @@ cd backend
 pip install -r requirements.txt
 ```
 
-3. **配置环境变量**
+3. **运行方式**
+
+1) **推荐：Web 控制台**（启动/停止 + 日志查看）
+
+```bash
+# 启动前端控制台与日志服务
+cd frontend
+python server.py
+# 访问控制台
+# http://localhost:8080
+```
+- 日志列表与内容自动刷新，可手动切换文件。
+
+1) **直接运行后端（无前端界面）**
+
+- **配置环境变量**
 
 ```bash
 # Windows
@@ -95,13 +110,11 @@ DASHSCOPE_API_KEY=your_api_key_here
 ENABLE_STUDIO=false
 ```
 
-4. **运行游戏**
-
+- **运行游戏**
 ```bash
+cd backend
 python main.py
 ```
-
-就这么简单！游戏将自动开始，你可以在终端看到 AI 智能体之间的对话和游戏进程。
 
 
 **模型选择提示**：
@@ -132,7 +145,11 @@ werewolf-game/
 │   │   └── game_logs/        # 游戏日志
 │   ├── .env.example          # 环境变量示例
 │   └── requirements.txt      # Python 依赖
-├── frontend/                 # 前端（待开发）
+├── frontend/                 # Web 控制台与日志查看
+│   ├── index.html            # UI 页面（桌面/移动兼容）
+│   ├── script.js             # 日志解析、自动刷新、启动/停止调用
+│   ├── styles.css            # 样式
+│   └── server.py             # 简易 HTTP 服务与游戏进程管理
 └── README.md                 # 项目说明文档
 ```
 
@@ -146,6 +163,13 @@ werewolf-game/
 - 角色逻辑：[backend/models/roles.py](backend/models/roles.py) 定义狼人、村民、预言家、女巫、猎人五类角色的专属夜晚行为、投票/讨论流程及提示词。
 - 数据模型：[backend/models/schemas.py](backend/models/schemas.py) 用 Pydantic 规范化输出结构（speech/behavior/thought、投票、毒药/查验/开枪等）。
 - 提示词集合：[backend/prompts/game_prompts.py](backend/prompts/game_prompts.py) 与 [backend/prompts/role_prompts.py](backend/prompts/role_prompts.py) 分别提供主持人/流程提示与角色策略指南。
+
+## 操作与日志
+
+- **启动/停止**：通过 Web 控制台按钮调用 [frontend/server.py](frontend/server.py) 的 `/api/game/start|stop`，后端进程会被创建或终止。
+- **终止日志落盘**：即便用户点击“停止游戏”终止进程，也会在最新日志尾部追加收口块（结束时间、游戏状态: 异常终止），避免日志缺尾。
+- **日志位置**：默认写入 `backend/data/game_logs/game_<timestamp>.log`，控制台支持选择文件与自动刷新。
+- **经验存档**：写入 `backend/data/experiences/players_experience_*.json`，每局结束合并持久知识。
 
 ## 运行时输出与数据
 
