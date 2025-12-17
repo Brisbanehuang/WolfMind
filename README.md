@@ -2,7 +2,7 @@
 
 <div align="center">
 
-🐺 基于 AgentScope 的多智能体狼人杀游戏系统（含 Web 控制台与日志查看）
+🐺 基于 AgentScope 的多智能体狼人杀游戏系统
 
 ![狼人杀 AI 游戏](./static/werewolf_ai_game.png)
 
