@@ -57,6 +57,10 @@ def _format_impression_context(
 
     record_lines = []
     for rec in round_public_records:
+        scope = rec.get("scope")
+        # 仅狼人可见的记录：非狼人跳过，避免夜聊信息外泄
+        if scope == "wolves_only" and not players.is_werewolf(player_name):
+            continue
         speech = rec.get("speech", "")
         behavior = rec.get("behavior", "")
         seg = f"{rec['player']}:"
@@ -435,11 +439,28 @@ async def werewolves_game(
                             "夜晚讨论",
                         )
                         res = await werewolf.discuss_with_team(
-                            _attach_context(await moderator(""), context),
+                            _attach_context(
+                                await moderator(
+                                    f"""当前处于夜晚狼人讨论阶段（狼人讨论第{_}轮）。
+                                    狼人讨论结束后，是女巫做出决策阶段和预言家预言，之后才会结束夜晚阶段并公布夜间信息。
+                                    """,
+                                ),
+                                context,
+                            ),
                         )
                         # 记录狼人讨论
                         speech, behavior, thought, content_raw = _extract_msg_fields(
                             res)
+                        # 仅狼人可见的夜聊记录，供后续上下文使用
+                        round_public_records.append(
+                            {
+                                "player": werewolf.name,
+                                "speech": speech or content_raw,
+                                "behavior": behavior,
+                                "phase": "狼人夜聊",
+                                "scope": "wolves_only",
+                            },
+                        )
                         # 手动广播去隐私的消息，避免 thought 外泄
                         await werewolves_hub.broadcast(
                             _make_public_msg(
