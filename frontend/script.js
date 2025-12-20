@@ -290,7 +290,7 @@ function renderTable(gameData) {
         card.className = 'player-card';
         card.innerHTML = `
             <div class="player-avatar">${player.name.slice(-1)}</div>
-            <div class="player-name">${player.name}</div>
+            <div class="player-name" title="模型: ${player.model || '未知'}">${player.name}</div>
             <div class="player-role">${roleMap[player.role] || player.role || '未知'}</div>
         `;
 
@@ -470,9 +470,20 @@ function parseLogContent(content) {
     let currentPhase = null;
     let currentAction = null;
     let currentField = null;
+    let inPlayersSection = false; // Track when we're inside the player list block
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
+
+        if (line.startsWith('玩家列表:')) {
+            inPlayersSection = true;
+            continue;
+        }
+
+        // Leave players section once we hit a separator or a new block
+        if (inPlayersSection && (line.startsWith('=') || line.match(/^第 \d+ 回合$/))) {
+            inPlayersSection = false;
+        }
 
         if (line.startsWith('游戏ID:')) {
             gameData.gameId = line.split(':')[1].trim();
@@ -486,13 +497,18 @@ function parseLogContent(content) {
         if (line.includes('游戏结束:')) {
             gameData.status = line.split('游戏结束:')[1].split('。')[0].trim();
         }
+        if (line.startsWith('游戏状态:')) {
+            gameData.status = line.split('游戏状态:')[1].trim();
+        }
 
-        if (line.startsWith('- Player')) {
-            const match = line.match(/- (Player\d+): (\w+)/);
+        // Parse players (more tolerant to formats and extra model info)
+        if (inPlayersSection && line.includes('Player')) {
+            const match = line.match(/[-•\u2013\u2014]\s*(Player\d+)(?:\s*\(([^)]*)\))?:\s*([\w-]+)/i);
             if (match) {
                 gameData.players.push({
                     name: match[1],
-                    role: match[2],
+                    model: match[2] || '',
+                    role: match[3].toLowerCase(),
                     alive: true
                 });
             }
@@ -681,6 +697,13 @@ function parseReflections(content) {
 function openPlayerModal(playerName) {
     const modal = document.getElementById('playerModal');
     document.getElementById('modalPlayerName').textContent = playerName;
+
+    // Find player model
+    const player = currentGameData ? currentGameData.players.find(p => p.name === playerName) : null;
+    const modelEl = document.getElementById('modalPlayerModel');
+    if (modelEl) {
+        modelEl.textContent = player && player.model ? `(${player.model})` : '';
+    }
 
     // Display reflection
     const reflection = playerReflections[playerName];
