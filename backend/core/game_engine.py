@@ -557,6 +557,8 @@ async def werewolves_game(
                     await moderator(wolves_res_prompt),
                 )
 
+            night_hunter_candidates: list[Hunter] = []
+
             # 女巫回合
             await alive_players_hub.broadcast(
                 await moderator(Prompts.to_all_witch_turn),
@@ -612,6 +614,12 @@ async def werewolves_game(
                     poisoned_player = result.get("poison")
                     logger.log_action("女巫行动", f"使用毒药毒杀了 {poisoned_player}")
 
+            # 夜晚若有猎人被狼刀（且未被毒/未被解药救活），记录到候选列表
+            night_hunter_candidates: list[Hunter] = [
+                hunter for hunter in players.hunter
+                if killed_player == hunter.name and poisoned_player != hunter.name
+            ]
+
             # 预言家回合
             await alive_players_hub.broadcast(
                 await moderator(Prompts.to_all_seer_turn),
@@ -650,13 +658,20 @@ async def werewolves_game(
                         logger.log_action(
                             "预言家查验", f"查验 {checked_player}, 结果: {role_result}")
 
-            # 猎人回合
-            for hunter in players.hunter:
-                # 如果被杀且不是被女巫毒死
-                if (
-                    killed_player == hunter.name
-                    and poisoned_player != hunter.name
-                ):
+            # 白天阶段
+            logger.start_day()
+
+            # 天亮后、公布夜间淘汰前，处理夜晚被狼人击杀的猎人开枪（仅狼刀且未被毒）
+            night_hunter_shots: list[str] = []
+            if night_hunter_candidates:
+                # 猎人应基于当前可行动玩家（排除已被狼刀/毒杀的目标）做选择
+                death_set = {name for name in [
+                    killed_player, poisoned_player] if name}
+                for hunter in night_hunter_candidates:
+                    alive_for_hunter = [
+                        p for p in players.current_alive if p.name not in death_set]
+                    if not alive_for_hunter:
+                        continue
                     context = _format_impression_context(
                         hunter.name,
                         players,
@@ -666,32 +681,46 @@ async def werewolves_game(
                         "猎人开枪",
                     )
                     shoot_res = await hunter.shoot(
-                        players.current_alive,
+                        alive_for_hunter,
                         moderator,
                         context,
                     )
-                    if shoot_res:
-                        shot_player = shoot_res.get("target")
-                        logger.log_message_detail(
-                            "猎人开枪",
-                            hunter.name,
-                            speech=shoot_res.get("speech"),
-                            behavior=shoot_res.get("behavior"),
-                            thought=shoot_res.get("thought"),
-                        )
-                    if shot_player:
-                        logger.log_action(
-                            "猎人开枪", f"猎人 {hunter.name} 开枪击杀了 {shot_player}")
+                    if not shoot_res:
+                        continue
 
-            # 更新存活玩家
-            dead_tonight = [killed_player, poisoned_player, shot_player]
+                    logger.log_message_detail(
+                        "猎人开枪",
+                        hunter.name,
+                        speech=shoot_res.get("speech"),
+                        behavior=shoot_res.get("behavior"),
+                        thought=shoot_res.get("thought"),
+                    )
+
+                    target = shoot_res.get(
+                        "target") if shoot_res.get("shoot") else None
+                    if target:
+                        night_hunter_shots.append(target)
+                        logger.log_action(
+                            "猎人开枪", f"猎人 {hunter.name} 开枪击杀了 {target}")
+                        await alive_players_hub.broadcast(
+                            await moderator(
+                                Prompts.to_all_hunter_shoot.format(target),
+                            ),
+                        )
+
+            dead_tonight_raw = [killed_player,
+                                poisoned_player, *night_hunter_shots]
+            # 去重保持顺序，避免重复公告
+            dead_tonight: list[str] = []
+            for p in dead_tonight_raw:
+                if p and p not in dead_tonight:
+                    dead_tonight.append(p)
+
             # 记录夜晚死亡
-            logger.log_death("夜晚死亡", [p for p in dead_tonight if p])
+            logger.log_death("夜晚死亡", dead_tonight)
             players.update_players(dead_tonight)
 
-            # 白天阶段
-            logger.start_day()
-            night_deaths = [_ for _ in dead_tonight if _]
+            night_deaths = dead_tonight
             if night_deaths:
                 announcement = f"天亮了，请所有玩家睁眼。昨晚 {names_to_str(night_deaths)} 被淘汰。"
                 logger.log_announcement(announcement)
@@ -1086,15 +1115,19 @@ async def werewolves_game(
                         moderator,
                         context,
                     )
-                    if shoot_res:
-                        shot_player = shoot_res.get("target")
-                        logger.log_message_detail(
-                            "猎人开枪",
-                            hunter.name,
-                            speech=shoot_res.get("speech"),
-                            behavior=shoot_res.get("behavior"),
-                            thought=shoot_res.get("thought"),
-                        )
+                    if not shoot_res:
+                        continue
+
+                    logger.log_message_detail(
+                        "猎人开枪",
+                        hunter.name,
+                        speech=shoot_res.get("speech"),
+                        behavior=shoot_res.get("behavior"),
+                        thought=shoot_res.get("thought"),
+                    )
+
+                    shot_player = shoot_res.get(
+                        "target") if shoot_res.get("shoot") else None
                     if shot_player:
                         logger.log_action(
                             "猎人开枪", f"猎人 {hunter.name} 开枪击杀了 {shot_player}")

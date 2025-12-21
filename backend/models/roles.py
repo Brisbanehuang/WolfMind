@@ -305,16 +305,21 @@ class Hunter(BaseRole):
             structured_model=get_hunter_model(alive_players),
         )
 
-        if msg_hunter.metadata.get("shoot"):
-            self.has_shot = False
-            return {
-                "target": msg_hunter.metadata.get("name"),
-                "speech": msg_hunter.metadata.get("speech"),
-                "behavior": msg_hunter.metadata.get("behavior"),
-                "thought": msg_hunter.metadata.get("thought"),
-            }
+        decision = bool(msg_hunter.metadata.get("shoot"))
+        target_name = msg_hunter.metadata.get("name") if decision else None
 
-        return None
+        result = {
+            "shoot": decision,
+            "target": target_name,
+            "speech": msg_hunter.metadata.get("speech"),
+            "behavior": msg_hunter.metadata.get("behavior"),
+            "thought": msg_hunter.metadata.get("thought"),
+        }
+
+        if decision:
+            self.has_shot = False
+
+        return result
 
 
 class RoleFactory:
