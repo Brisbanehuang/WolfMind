@@ -78,6 +78,35 @@ class Config:
         """OpenAI Model Name"""
         return self._get("OPENAI_MODEL_NAME", "gpt-3.5-turbo")
 
+    # 数据分析（报告生成）可选的独立 OpenAI 配置；未提供则回退共用配置
+    @property
+    def openai_analysis_api_key(self) -> Optional[str]:
+        return self._get("ANALYSIS_OPENAI_API_KEY", None)
+
+    @property
+    def openai_analysis_base_url(self) -> Optional[str]:
+        return self._get("ANALYSIS_OPENAI_BASE_URL", None)
+
+    @property
+    def openai_analysis_model_name(self) -> Optional[str]:
+        return self._get("ANALYSIS_OPENAI_MODEL_NAME", None)
+
+    @property
+    def openai_analysis_config(self) -> Optional[dict[str, str]]:
+        """分析模块独立 OpenAI 配置；若未设置则返回 None 以使用共用配置。"""
+
+        key = self.openai_analysis_api_key
+        base = self.openai_analysis_base_url
+        model = self.openai_analysis_model_name
+
+        if key or base or model:
+            return {
+                "api_key": key or (self.openai_api_key or ""),
+                "base_url": base or self.openai_base_url,
+                "model_name": model or self.openai_model_name,
+            }
+        return None
+
     @property
     def openai_player_api_keys(self) -> list[str]:
         """每个玩家的 OpenAI API Key 列表（从 OPENAI_API_KEY_P1..P9 读取）。"""
