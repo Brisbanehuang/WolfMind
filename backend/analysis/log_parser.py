@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 
-_ROLE_RE = re.compile(r"^\s*-\s*(Player\d+)\s*:\s*(\w+)\s*$")
+_ROLE_RE = re.compile(r"^\s*-\s*(Player\d+)(?:\s*\(.*?\))?\s*:\s*(\w+)\s*$")
 _GAME_ID_RE = re.compile(r"^\s*游戏ID\s*:\s*([0-9_]+)\s*$")
 _EVENT_HEADER_RE = re.compile(
     r"^\[(\d{2}:\d{2}:\d{2})\]\s*(.*?)\s*\|\s*(Player\d+)\s*$")
@@ -106,7 +106,6 @@ def parse_game_log(log_path: str | Path) -> ParsedLog:
             continue
 
         if current is not None:
-            # 通常事件后会跟一条分隔线，遇到则结束当前事件
             if line.startswith("--------------------------------------------------------------------------------"):
                 flush_current()
                 continue
@@ -125,22 +124,11 @@ def parse_game_log(log_path: str | Path) -> ParsedLog:
 
 
 def build_compact_context(parsed: ParsedLog, experience_players: dict[str, str] | None) -> dict[str, Any]:
-    """构建用于 LLM 提示词的紧凑上下文负载。
-
-    这里会做有损压缩：保证足够用于分析，同时尽量控制上下文长度。
+    """
+    构建用于 LLM 提示词的完整上下文负载。（无上下文压缩）
     """
 
     experience_players = experience_players or {}
-
-    def _join_limit(items: list[str], limit: int) -> str:
-        if not items:
-            return ""
-        text = "\n".join(items)
-        if len(text) <= limit:
-            return text
-        head = text[: int(limit * 0.7)]
-        tail = text[-int(limit * 0.3):]
-        return head + "\n...\n" + tail
 
     per_player_summary: dict[str, Any] = {}
     for pid in parsed.players.keys():
@@ -148,21 +136,21 @@ def build_compact_context(parsed: ParsedLog, experience_players: dict[str, str] 
         per_player_summary[pid] = {
             "role": parsed.players.get(pid, "unknown"),
             "experience": experience_players.get(pid, ""),
-            "thought": _join_limit(buckets.get("thought", []), 1800),
-            "speech": _join_limit(buckets.get("speech", []), 1800),
-            "reflection": _join_limit(buckets.get("reflection", []), 1200),
-            "other": _join_limit(buckets.get("other", []), 1000),
+            "thought": "\n".join(buckets.get("thought", [])),
+            "speech": "\n".join(buckets.get("speech", [])),
+            "reflection": "\n".join(buckets.get("reflection", [])),
+            "other": "\n".join(buckets.get("other", [])),
         }
 
-    # 提供一份轻量的全局时间线：取前 N 条事件摘要
+    # 提供完整的全局时间线
     timeline = [
         {
             "time": e.get("time"),
             "channel": e.get("channel"),
             "player": e.get("player"),
-            "body": (e.get("body", "") or "")[:400],
+            "body": e.get("body", "") or "",
         }
-        for e in parsed.events[:80]
+        for e in parsed.events
     ]
 
     return {

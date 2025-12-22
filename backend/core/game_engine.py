@@ -335,12 +335,15 @@ async def werewolves_game(
     agents: list[ReActAgent],
     knowledge_store: PlayerKnowledgeStore | None = None,
     player_model_map: dict[str, str] | None = None,
-) -> None:
+) -> tuple[str, str]:
     """狼人杀游戏的主入口
 
     Args:
         agents (`list[ReActAgent]`):
             9个智能体的列表。
+
+    Returns:
+        tuple[str, str]: (log_file_path, experience_file_path)
     """
     assert len(agents) == 9, "The werewolf game needs exactly 9 players."
 
@@ -1221,6 +1224,8 @@ async def werewolves_game(
         # 持久化本局累计的知识
         knowledge_store.bulk_update(players.export_all_knowledge())
         knowledge_store.save()
+
+        return str(logger.log_file), str(knowledge_store.path)
 
     except BaseException as exc:  # pylint: disable=broad-except
         game_status = "异常终止"

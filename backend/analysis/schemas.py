@@ -41,14 +41,6 @@ class NetworkAnalysisTexts(BaseModel):
     avgTrust: StatAnalysisText
 
 
-class BiasAnalysisTexts(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    overconfidence: StatAnalysisText
-    sunkCost: StatAnalysisText
-    decisionPoints: StatAnalysisText
-
-
 class StatsAnalysisTexts(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -64,7 +56,6 @@ class AnalysisTexts(BaseModel):
     stats: StatsAnalysisTexts
     players: dict[str, PlayerAnalysisText] = Field(default_factory=dict)
     network: NetworkAnalysisTexts
-    bias: BiasAnalysisTexts
 
 
 class PsychologyPlayerMetrics(BaseModel):
@@ -108,35 +99,6 @@ class Network(BaseModel):
     links: list[NetworkLink]
 
 
-class BiasItem(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str
-    key: str
-
-
-class BiasScores(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-
-class DecisionPoint(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    round: int = Field(ge=1)
-    player: str
-    decision: str
-    bias: str
-    impact: float = Field(ge=0.0, le=1.0)
-
-
-class Bias(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    biases: list[BiasItem]
-    scores: dict[str, dict[str, float]]
-    decisionPoints: list[DecisionPoint]
-
-
 class AnalysisData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -145,4 +107,3 @@ class AnalysisData(BaseModel):
     analysisTexts: AnalysisTexts
     psychology: Psychology
     network: Network
-    bias: Bias

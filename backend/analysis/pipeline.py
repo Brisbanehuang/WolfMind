@@ -35,7 +35,6 @@ def _merge_analysis_data(
     roles: dict[str, str],
     psychology_out: dict[str, Any],
     network_out: dict[str, Any],
-    bias_out: dict[str, Any],
 ) -> dict[str, Any]:
     player_ids = sorted(roles.keys(), key=lambda x: int(
         "".join(c for c in x if c.isdigit()) or 0))
@@ -57,7 +56,6 @@ def _merge_analysis_data(
         "stats": psychology_out["analysisTexts"]["stats"],
         "players": psychology_out["analysisTexts"].get("players", {}),
         "network": network_out["analysisTexts"]["network"],
-        "bias": bias_out["analysisTexts"]["bias"],
     }
 
     merged = {
@@ -66,7 +64,6 @@ def _merge_analysis_data(
         "analysisTexts": analysis_texts,
         "psychology": psychology_out["psychology"],
         "network": network_out["network"],
-        "bias": bias_out["bias"],
     }
 
     # 使用模板对应的 schema 校验，避免前端可视化因字段缺失而崩溃
@@ -114,34 +111,27 @@ async def run_analysis(
         ask_for_schema,
         PSYCHOLOGY_SYS,
         NETWORK_SYS,
-        BIAS_SYS,
         PsychologyAgentOutputStrict,
         NetworkAgentOutputStrict,
-        BiasAgentOutputStrict,
         build_psychology_prompt,
         build_network_prompt,
-        build_bias_prompt,
     )
 
     psychology_agent = create_analysis_agent(
         "PsychologyAgent", PSYCHOLOGY_SYS)
     network_agent = create_analysis_agent("NetworkAgent", NETWORK_SYS)
-    bias_agent = create_analysis_agent("BiasAgent", BIAS_SYS)
 
     psy_prompt = build_psychology_prompt(context, player_ids)
     net_prompt = build_network_prompt(context, player_ids)
-    bias_prompt = build_bias_prompt(context, player_ids)
 
     psy_out_model = await ask_for_schema(psychology_agent, psy_prompt, PsychologyAgentOutputStrict)
     net_out_model = await ask_for_schema(network_agent, net_prompt, NetworkAgentOutputStrict)
-    bias_out_model = await ask_for_schema(bias_agent, bias_prompt, BiasAgentOutputStrict)
 
     analysis_data = _merge_analysis_data(
         parsed.game_id,
         roles,
         psy_out_model.model_dump(),
         net_out_model.model_dump(),
-        bias_out_model.model_dump(),
     )
 
     if output_path is None:

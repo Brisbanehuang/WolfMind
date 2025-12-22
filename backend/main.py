@@ -2,10 +2,12 @@
 """后端主入口 - 重构版本"""
 import asyncio
 import sys
+from pathlib import Path
 
 from core.game_engine import werewolves_game
 from core.knowledge_base import PlayerKnowledgeStore
 from config import config
+from analysis.pipeline import run_analysis
 
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeMultiAgentFormatter, OpenAIMultiAgentFormatter, OllamaMultiAgentFormatter
@@ -235,7 +237,7 @@ async def main() -> None:
     print("🎮 游戏开始！")
     print("=" * 50 + "\n")
 
-    await werewolves_game(
+    log_path, experience_path = await werewolves_game(
         players,
         knowledge_store=knowledge_store,
         player_model_map=player_model_map,
@@ -248,6 +250,21 @@ async def main() -> None:
     #     **{player.name: player for player in players},
     # )
     print("✓ 检查点保存完成")
+
+    # 自动进行数据分析
+    if config.auto_analyze:
+        print("\n" + "=" * 50)
+        print("📊 正在自动生成游戏分析报告...")
+        print("=" * 50)
+        try:
+            report_path = await run_analysis(
+                log_path=Path(log_path),
+                experience_path=Path(experience_path)
+            )
+            print(f"✓ 分析报告已生成: {report_path}")
+        except Exception as e:
+            print(f"❌ 分析报告生成失败: {e}")
+
     print("\n游戏结束！")
 
 

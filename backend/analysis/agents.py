@@ -23,10 +23,8 @@ from agentscope.message import Msg
 from analysis.schemas import (
     Psychology,
     Network,
-    Bias,
     StatsAnalysisTexts,
     NetworkAnalysisTexts,
-    BiasAnalysisTexts,
     PlayerAnalysisText,
 )
 
@@ -313,22 +311,6 @@ async def ask_for_schema(agent: ReActAgent, user_prompt: str, schema: type[T], *
             data = json.loads(json_text)
 
             # 容错：如果模型遗漏了 analysisTexts 顶层字段，为必需的 schema 填充兜底占位
-            if schema is BiasAgentOutputStrict:
-                if "analysisTexts" not in data:
-                    data["analysisTexts"] = {
-                        "bias": {
-                            "overconfidence": {"title": "", "content": ""},
-                            "sunkCost": {"title": "", "content": ""},
-                            "decisionPoints": {"title": "", "content": ""},
-                        }
-                    }
-                else:
-                    bias_texts = data.setdefault(
-                        "analysisTexts", {}).setdefault("bias", {})
-                    for key in ("overconfidence", "sunkCost", "decisionPoints"):
-                        bias_texts.setdefault(
-                            key, {"title": "", "content": ""})
-
             if schema is NetworkAgentOutputStrict:
                 if "analysisTexts" not in data:
                     data["analysisTexts"] = {
@@ -424,26 +406,6 @@ NETWORK_SYS = """
 """.strip()
 
 
-BIAS_SYS = """
-你是一名“认知偏差与博弈论漏洞挖掘”专家。
-
-目标：评估每位玩家在关键决策上的认知偏差强度，并标注关键决策点，输出严格 JSON。
-
-硬性要求（务必完全遵守）：
-- 只输出一个 JSON 对象，禁止任何解释、提示或 markdown，禁止使用 ```json 代码块。
-- 顶层必须包含 bias 与 analysisTexts 字段。
-- biases 固定包含并保持顺序：
-    1) 沉没成本谬误 sunkCost
-    2) 虚假共识 falseConsensus
-    3) 锚定效应 anchoring
-    4) 确认偏误 confirmation
-    5) 过度自信 overconfidence
-- scores: 每位玩家对每个 bias 的分数 0~1。
-- decisionPoints: 3~8 个关键点；impact 0~1；bias 字段使用上述 key。
-- analysisTexts.bias 必须包含 overconfidence、sunkCost、decisionPoints 三段中文分析文本，每段都有 title 与 content。
-""".strip()
-
-
 class PsychologyAgentOutput(BaseModel):
     psychology: dict[str, Any]
     analysisTexts: dict[str, Any]
@@ -451,11 +413,6 @@ class PsychologyAgentOutput(BaseModel):
 
 class NetworkAgentOutput(BaseModel):
     network: dict[str, Any]
-    analysisTexts: dict[str, Any]
-
-
-class BiasAgentOutput(BaseModel):
-    bias: dict[str, Any]
     analysisTexts: dict[str, Any]
 
 
@@ -476,15 +433,6 @@ class NetworkTexts(BaseModel):
 class NetworkAgentOutputStrict(BaseModel):
     network: Network
     analysisTexts: NetworkTexts
-
-
-class BiasTexts(BaseModel):
-    bias: BiasAnalysisTexts
-
-
-class BiasAgentOutputStrict(BaseModel):
-    bias: Bias
-    analysisTexts: BiasTexts
 
 
 def build_psychology_prompt(context: dict[str, Any], player_ids: list[str]) -> str:
@@ -581,64 +529,6 @@ def build_network_prompt(context: dict[str, Any], player_ids: list[str]) -> str:
                         "suspectRelations": {"title": "", "content": ""},
                         "echoChamber": {"title": "", "content": ""},
                         "avgTrust": {"title": "", "content": ""},
-                    }
-                },
-            },
-        },
-        ensure_ascii=False,
-        indent=2,
-    )
-
-
-def build_bias_prompt(context: dict[str, Any], player_ids: list[str]) -> str:
-    return json.dumps(
-        {
-            "task": "bias",
-            "required": {
-                "players": player_ids,
-                "biases": [
-                    {"name": "沉没成本谬误", "key": "sunkCost"},
-                    {"name": "虚假共识", "key": "falseConsensus"},
-                    {"name": "锚定效应", "key": "anchoring"},
-                    {"name": "确认偏误", "key": "confirmation"},
-                    {"name": "过度自信", "key": "overconfidence"},
-                ],
-                "analysisTexts": ["overconfidence", "sunkCost", "decisionPoints"],
-            },
-            "context": context,
-            "output_format": {
-                "bias": {
-                    "biases": [
-                        {"name": "沉没成本谬误", "key": "sunkCost"},
-                        {"name": "虚假共识", "key": "falseConsensus"},
-                        {"name": "锚定效应", "key": "anchoring"},
-                        {"name": "确认偏误", "key": "confirmation"},
-                        {"name": "过度自信", "key": "overconfidence"},
-                    ],
-                    "scores": {
-                        "Player1": {
-                            "sunkCost": 0.2,
-                            "falseConsensus": 0.2,
-                            "anchoring": 0.2,
-                            "confirmation": 0.2,
-                            "overconfidence": 0.2,
-                        }
-                    },
-                    "decisionPoints": [
-                        {
-                            "round": 1,
-                            "player": "Player1",
-                            "decision": "...",
-                            "bias": "overconfidence",
-                            "impact": 0.5,
-                        }
-                    ],
-                },
-                "analysisTexts": {
-                    "bias": {
-                        "overconfidence": {"title": "", "content": ""},
-                        "sunkCost": {"title": "", "content": ""},
-                        "decisionPoints": {"title": "", "content": ""},
                     }
                 },
             },

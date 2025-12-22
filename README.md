@@ -44,10 +44,9 @@
 - ✅ AI 智能体自主学习和策略优化
 - ✅ 经验和策略知识库
 - ✅ Web 控制台：日志列表/查看、自动刷新、启动/停止游戏
+- ✅ 基于日志的深度数据分析（心理分析、社交网络分析）
 
 ### 开发中功能 🚧
-
-- 🚧 基于日志的深度数据分析
 
 
 ## 快速开始
@@ -110,6 +109,9 @@ DASHSCOPE_API_KEY=your_api_key_here
 
 # (可选) 启用 AgentScope Studio 可视化
 ENABLE_STUDIO=false
+
+# (可选) 游戏结束后自动生成分析报告
+AUTO_ANALYZE=false
 ```
 
 - 使用 OpenAI 时：
@@ -142,6 +144,10 @@ WolfMind/
 │   │   ├── game_engine.py    # 游戏引擎
 │   │   ├── game_logger.py    # 游戏日志记录器
 │   │   └── utils.py          # 工具函数
+│   ├── analysis/             # 深度数据分析模块
+│   │   ├── agents.py         # 分析智能体
+│   │   ├── pipeline.py       # 分析流水线
+│   │   └── log_parser.py     # 日志解析器
 │   ├── models/               # 数据模型
 │   │   ├── roles.py          # 角色系统
 │   │   └── schemas.py        # 数据结构
@@ -152,7 +158,8 @@ WolfMind/
 │   └── requirements.txt      # Python 依赖
 ├── data/                     # 运行期数据
 │   ├── experiences/          # 玩家经验存档
-│   └── game_logs/            # 游戏日志
+│   ├── game_logs/            # 游戏日志
+│   └── analysis_reports/     # 自动生成的分析报告
 ├── frontend/                 # Web 控制台与日志查看
 │   ├── index.html            # UI 页面（桌面/移动兼容）
 │   ├── script.js             # 日志解析、自动刷新、启动/停止调用
@@ -183,6 +190,37 @@ WolfMind/
 
 - **游戏日志**：默认写入 `data/game_logs`，包含完整时序的发言、投票、行动及胜负公告，便于回放与分析。
 - **经验存档/知识库**：每次启动都会在 `data/experiences` 新建带时间戳的 `players_experience_*.json`，保存玩家的跨局经验；本局结束时会合并最新认知并落盘。历史示例文件仍保留 `checkpoint` 前缀，兼容查看。
+
+## 深度数据分析模块
+
+项目包含一个强大的自动化分析流水线，能够对游戏日志进行深度挖掘并生成可视化报告：
+
+- **心理分析**：分析每个玩家的心理状态、一致性、欺骗性以及决策逻辑。
+- **社交网络分析**：通过投票和发言数据，构建玩家间的社交关系图谱，识别阵营倾向和影响力中心。
+- **自动化流水线**：
+    1. **日志解析**：提取结构化的游戏行为数据。
+    2. **多智能体分析**：利用专门的分析智能体（PsychologyAgent, NetworkAgent）对数据进行多维度解读。
+    3. **可视化报告**：生成包含 ECharts 图表的交互式 HTML 报告，直观展示分析结果。
+
+生成的报告保存在 `data/analysis_reports/` 目录下。
+
+### 使用说明
+
+#### 1. 自动分析
+在 `.env` 中设置 `AUTO_ANALYZE=true`。游戏运行结束后，系统会自动调用分析流水线并生成报告。
+
+#### 2. 手动分析 (CLI)
+如果你想对现有的历史日志进行分析，可以使用以下命令：
+
+```bash
+cd backend
+python -m analysis --log ../data/game_logs/game_xxxx.log --experience ../data/experiences/players_experience_xxxx.json
+```
+
+**参数说明**：
+- `--log`: (必填) 游戏日志文件路径。
+- `--experience`: (可选) 玩家经验文件路径。如果提供，分析将包含对玩家长期经验更新的解读。
+- `--out`: (可选) 输出 HTML 的路径。默认为 `data/analysis_reports/report_<timestamp>.html`。
 
 
 

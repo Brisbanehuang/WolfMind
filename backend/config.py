@@ -215,6 +215,13 @@ class Config:
         """Studio 项目名称"""
         return self._get("STUDIO_PROJECT", "werewolf_game")
 
+    # ==================== 经验分析配置 ====================
+
+    @property
+    def auto_analyze(self) -> bool:
+        """是否在游戏结束后自动进行数据分析"""
+        return self._get("AUTO_ANALYZE", "false").lower() == "true"
+
     # ==================== 检查点配置 ====================
 
     @property
@@ -309,6 +316,7 @@ class Config:
         print(f"最大游戏轮数: {self.max_game_round}")
         print(f"最大讨论轮数: {self.max_discussion_round}")
         print(f"启用 Studio: {self.enable_studio}")
+        print(f"自动数据分析: {self.auto_analyze}")
         print(f"经验存档目录: {self.experience_dir}")
         print("=" * 50)
 
