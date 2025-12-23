@@ -53,19 +53,21 @@
 
 ### 1) 安装
 
+推荐使用 [uv](https://github.com/astral-sh/uv) 快速管理环境：
+
 ```bash
 git clone https://github.com/KeLuoJun/WolfMind.git
 cd WolfMind
 
-cd backend
-pip install -r requirements.txt
+# 使用 uv 同步环境（自动创建虚拟环境并安装依赖）
+uv sync
 ```
 
 ### 2) 运行（推荐：Web 控制台）
 
 ```bash
-cd frontend
-python server.py
+# 使用 uv 运行前端服务器
+uv run python frontend/server.py
 ```
 
 打开控制台：`http://localhost:8080`。
@@ -77,13 +79,13 @@ python server.py
 ```bash
 cd backend
 copy .env.example .env
+cd ..
 ```
 
 编辑 `.env`，至少配置 `MODEL_PROVIDER` 与对应的 API Key，然后：
 
 ```bash
-cd backend
-python main.py
+uv run python backend/main.py
 ```
 
 ---
@@ -174,10 +176,9 @@ WolfMind/
 ### 手动分析（CLI）
 
 ```bash
-cd backend
-python -m analysis \
-  --log ../data/game_logs/game_xxxx.log \
-  --experience ../data/experiences/players_experience_xxxx.json
+uv run python -m backend.analysis \
+  --log data/game_logs/game_xxxx.log \
+  --experience data/experiences/players_experience_xxxx.json
 ```
 
 参数：
@@ -217,6 +218,7 @@ python -m analysis \
 
 - **多智能体框架**：[AgentScope](https://github.com/modelscope/agentscope)
 - **大语言模型**：DashScope / OpenAI / Ollama
+- **环境管理**：[uv](https://github.com/astral-sh/uv)
 - **编程语言**：Python 3.8+
 - **数据验证**：Pydantic
 - **异步编程**：asyncio
