@@ -1,0 +1,14 @@
+[project]
+name = "wolfmind"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "agentscope>=0.1.0",
+    "dashscope>=1.14.0",
+    "numpy>=1.24.0",
+    "openai>=1.0.0",
+    "pydantic>=2.0.0",
+    "typing-extensions>=4.5.0",
+]
